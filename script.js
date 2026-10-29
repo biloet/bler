@@ -310,7 +310,8 @@
     const byRdns = (r) => announced.find((d) => d.info?.rdns === r)?.provider;
     const eth = window.ethereum;
     const list = eth?.providers?.length ? eth.providers : eth ? [eth] : [];
-    if (kind === "metamask") return byRdns("io.metamask") || list.find((p) => p.isMetaMask && !p.isCoinbaseWallet);
+    if (kind === "metamask") return byRdns("io.metamask") || list.find((p) => p.isMetaMask && !p.isCoinbaseWallet && !p.isBitKeep && !p.isBitgetWallet);
+    if (kind === "bitget") return byRdns("com.bitget.web3") || window.bitkeep?.ethereum || list.find((p) => p.isBitKeep || p.isBitgetWallet);
     if (kind === "coinbase") return byRdns("com.coinbase.wallet") || list.find((p) => p.isCoinbaseWallet);
     return announced[0]?.provider || list[0];
   }
@@ -319,6 +320,8 @@
     const url = location.href.replace(/#.*$/, "");
     if (kind === "coinbase") {
       location.href = "https://go.cb-w.com/dapp?cb_url=" + encodeURIComponent(url);
+    } else if (kind === "bitget") {
+      location.href = "https://bkcode.vip?action=dapp&url=" + encodeURIComponent(url);
     } else {
       location.href = "https://metamask.app.link/dapp/" + url.replace(/^https?:\/\//, "");
     }
@@ -403,8 +406,13 @@
     const provider = findProvider(kind);
     if (!provider) {
       if (isMobile) return openInWalletApp(kind);
-      toast(kind === "coinbase" ? "Install the Coinbase Wallet extension first" : "Install MetaMask (or another wallet extension) first");
-      if (kind !== "injected") window.open(kind === "coinbase" ? "https://www.coinbase.com/wallet/downloads" : "https://metamask.io/download/", "_blank", "noopener");
+      const install = {
+        metamask: ["MetaMask", "https://metamask.io/download/"],
+        coinbase: ["the Coinbase Wallet extension", "https://www.coinbase.com/wallet/downloads"],
+        bitget: ["Bitget Wallet", "https://web3.bitget.com/en/wallet-download"],
+      }[kind];
+      toast(install ? `Install ${install[0]} first` : "Install a wallet extension first");
+      if (install) window.open(install[1], "_blank", "noopener");
       return;
     }
     attach(provider, kind);

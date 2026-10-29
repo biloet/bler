@@ -628,3 +628,4 @@ h1, h2, h3 { text-wrap: balance; }
 .toast, .toast.show { bottom: auto; top: calc(16px + env(safe-area-inset-top)); }
 .toast { transform: translate(-50%, -20px); }
 .toast.show { transform: translate(-50%, 0); }
+.w-bitget { background: linear-gradient(135deg, #00f0ff, #1b6bff); font-weight: 800; font-size: 17px; }
