@@ -18,6 +18,7 @@ npx serve .
 - `script.js` — UI, Explore list, wallet connection (EIP-6963 / EIP-1193)
 - `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
 - `trade.js` — Buy/Sell panel (opened from Explore or by pasting a token address)
+- `explore.js` — Explore read from chain: latest Pons V2 launches + tokens deployed by the connected wallet
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
 
@@ -41,5 +42,8 @@ curve's constant-product math minus curve + creator fees; every trade is
 simulated before signing. Selling approves the exact amount first if needed.
 Verified against mainnet with the SwapMeet ($MEET) curve.
 
-The Explore list is stored per browser for now; reading launches from chain
-for all visitors is the next step.
+Explore reads `TokenLaunched` logs from the factory over the public RPC
+(CORS-enabled) and batches token/curve reads through Multicall3. If the public
+RPC fails, it falls back to the connected wallet's RPC. Launches sent from this
+browser are saved by tx hash as "confirming" until the receipt is found, so a
+launch is never lost if the page closes mid-way.

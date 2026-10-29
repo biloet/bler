@@ -34,61 +34,21 @@
 
 
   // ---------- Launches → Explore ----------
-  // Until the Pons V2 integration is live, launches are stored as drafts in
-  // this browser. Once launching is on-chain, this list should be read from chain.
+  // Explore reads from chain (explore.js). Here we only remember launches made in
+  // this browser so a just-sent tx shows up as "pending" until it confirms.
   const LAUNCH_KEY = "bler-launches";
   const loadLaunches = () => {
-    try { return JSON.parse(localStorage.getItem(LAUNCH_KEY)) || []; } catch { return []; }
+    try { return (JSON.parse(localStorage.getItem(LAUNCH_KEY)) || []).filter((t) => t.hash); } catch { return []; }
   };
   const saveLaunches = (list) => {
     try { localStorage.setItem(LAUNCH_KEY, JSON.stringify(list)); return true; } catch { return false; }
   };
-  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const GRADS = [["#ff8a00", "#e52e71"], ["#00c6ff", "#0072ff"], ["#7f00ff", "#e100ff"], ["#11998e", "#38ef7d"], ["#f7971e", "#ffd200"], ["#fc466b", "#3f5efb"]];
-  const timeAgo = (t) => {
-    const s = Math.max(1, Math.round((Date.now() - t) / 1000));
-    if (s < 60) return `${s}s ago`;
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-    return `${Math.floor(s / 86400)}d ago`;
+  const rememberLaunch = (entry) => {
+    const list = loadLaunches().filter((t) => t.hash !== entry.hash);
+    list.push(entry);
+    saveLaunches(list);
+    window.dispatchEvent(new CustomEvent("bler:launched", { detail: entry }));
   };
-
-  function renderLaunches(highlightId) {
-    const list = loadLaunches().sort((a, b) => b.createdAt - a.createdAt);
-    $("#launchesEmpty").hidden = list.length > 0;
-    $("#launches").innerHTML = list
-      .map((t) => {
-        const g = GRADS[t.handle.length % GRADS.length];
-        const creator = t.creator ? `${t.creator.slice(0, 6)}…${t.creator.slice(-4)}` : "";
-        return `
-        <div class="p-card card${t.id === highlightId ? " just-launched" : ""}" data-id="${esc(t.id)}">
-          <div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${esc(t.handle[0].toUpperCase())}</div>
-          <div class="p-info">
-            <div class="p-name">${esc(t.ticker)} ${t.status === "live" ? '<span class="status-live">Live</span>' : '<span class="status-draft">Draft</span>'}</div>
-            <div class="p-handle"><span class="src src-${t.platform === "fomo" ? "fomo" : "x"}">${t.platform === "fomo" ? "fomo" : "𝕏"}</span> @${esc(t.handle)}</div>
-          </div>
-          <div class="p-right">
-            <div class="p-time">${timeAgo(t.createdAt)}</div>
-            <div class="p-creator">${esc(creator)}</div>
-          </div>
-        </div>`;
-      })
-      .join("");
-  }
-  renderLaunches();
-  setInterval(() => renderLaunches(), 30000);
-
-  $("#launches").addEventListener("click", (e) => {
-    const card = e.target.closest(".p-card");
-    if (!card) return;
-    const t = loadLaunches().find((x) => x.id === card.dataset.id);
-    if (t?.status === "live" && /^0x[0-9a-fA-F]{40}$/.test(t.token)) {
-      if (window.blerTrade) window.blerTrade.open(t.token);
-      else window.open(`https://robinhoodchain.blockscout.com/token/${t.token}`, "_blank", "noopener");
-    } else {
-      toast("Draft — this one was saved before on-chain launching was live");
-    }
-  });
 
   // Live launch info (fee / permission) from the Pons V2 factory
   async function refreshLaunchInfo() {
@@ -144,22 +104,17 @@
         setStatus("Switching to Robinhood Chain…");
         await w.ensureChain();
       }
+      const base = { name, symbol, handle, platform, deployer: w.address, createdAt: Date.now() };
       const res = await window.blerPons.launchToken({
         provider: w.provider, account: w.address, name, symbol, handle, platform, creatorTaxBps,
         onStep: (t) => setStatus(t),
+        // save the tx right away so the launch is never lost if the page closes
+        onSent: (hash) => rememberLaunch({ ...base, hash, status: "pending" }),
       });
-      const list = loadLaunches();
-      const token = {
-        id: res.token, handle, name, ticker: "$" + symbol, platform,
-        creator: w.address, createdAt: Date.now(), status: "live",
-        token: res.token, curve: res.curve, hash: res.hash,
-      };
-      list.push(token);
-      saveLaunches(list);
+      rememberLaunch({ ...base, hash: res.hash, status: "live", token: res.token, curve: res.curve });
       setStatus("");
       closeModals();
       e.target.reset();
-      renderLaunches(token.id);
       document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
       toast(`$${symbol} is live on Pons V2 🚀`);
     } catch (err) {
@@ -275,6 +230,9 @@
     }
     sessionStorage.setItem("bler-intro", "1");
   } catch (_) {}
+  // Safety net: never leave the black intro on screen if CSS animations are
+  // paused (background tab, power saving, old browsers).
+  setTimeout(() => intro.classList.add("skip"), 2600);
 
   // Starfield
   const canvas = document.getElementById("stars");

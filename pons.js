@@ -3,7 +3,7 @@
 // (pons-bundler, LOCKEY). Every launch reads live factory state and simulates
 // the call before asking the wallet to sign.
 import {
-  createPublicClient, createWalletClient, custom, http, parseAbi, parseEventLogs,
+  createPublicClient, createWalletClient, custom, http, fallback, parseAbi, parseEventLogs,
   formatEther, formatUnits, zeroAddress, BaseError, ContractFunctionRevertedError,
 } from "./assets/vendor/viem-2.21.0.js";
 
@@ -19,6 +19,7 @@ const chain = {
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } },
   blockExplorers: { default: { name: "Blockscout", url: EXPLORER } },
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 };
 
 const factoryAbi = parseAbi([
@@ -138,7 +139,7 @@ export async function readStatus(provider, account) {
  * Launch a token through the Pons V2 factory.
  * onStep(text) reports progress for the UI.
  */
-export async function launchToken({ provider, account, name, symbol, handle, platform, creatorTaxBps, onStep = () => {} }) {
+export async function launchToken({ provider, account, name, symbol, handle, platform, creatorTaxBps, onStep = () => {}, onSent = () => {} }) {
   try {
     const { publicClient, walletClient } = clients(provider);
 
@@ -187,6 +188,7 @@ export async function launchToken({ provider, account, name, symbol, handle, pla
 
     onStep(`Confirm in your wallet (fee ${status.launchFeeEth} ETH)…`);
     const hash = await walletClient.writeContract(request);
+    onSent(hash);
 
     onStep("Waiting for Robinhood Chain…");
     const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 1500, timeout: 180_000 });
@@ -352,5 +354,81 @@ export async function sell({ provider, account, market: m, tokensIn, slippageBps
   }
 }
 
-window.blerPons = { readStatus, launchToken, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
+// ---------------------------------------------------------------------------
+// Explore: read launches straight from chain (public RPC, works without a wallet)
+// ---------------------------------------------------------------------------
+const LOG_SPAN = 9_900_000n; // RPC allows 10M blocks per getLogs
+const launchedEvent = factoryAbi.find((x) => x.type === "event" && x.name === "TokenLaunched");
+// Public RPC first; if it fails (rate limit, flaky network) fall back to the
+// connected wallet's own RPC when it's on Robinhood Chain.
+function readClient() {
+  const w = window.blerWallet;
+  const transports = [http(chain.rpcUrls.default.http[0], { retryCount: 2, retryDelay: 400 })];
+  if (w?.provider && w.address && w.chainId === CHAIN_ID) transports.push(custom(w.provider));
+  return createPublicClient({ chain, transport: fallback(transports) });
+}
+
+async function describeLaunches(c, logs) {
+  if (!logs.length) return [];
+  const head = await c.getBlock();
+  const calls = logs.flatMap((l) => [
+    { address: l.args.token, abi: tokenAbi, functionName: "name" },
+    { address: l.args.token, abi: tokenAbi, functionName: "symbol" },
+    { address: l.args.token, abi: tokenAbi, functionName: "getTokenInfo" },
+    { address: l.args.curve, abi: curveAbi, functionName: "realQuoteReserve" },
+    { address: l.args.curve, abi: curveAbi, functionName: "graduationThreshold" },
+    { address: l.args.curve, abi: curveAbi, functionName: "graduated" },
+  ]);
+  const res = await c.multicall({ contracts: calls, allowFailure: true });
+  const BLOCK_MS = 104; // ~0.1s blocks; good enough for "x minutes ago"
+  return logs.map((l, i) => {
+    const r = res.slice(i * 6, i * 6 + 6).map((x) => (x.status === "success" ? x.result : null));
+    const info = r[2];
+    const desc = info?.[2] || "";
+    return {
+      token: l.args.token, curve: l.args.curve, deployer: l.args.deployer, hash: l.transactionHash,
+      native: l.args.pairToken === zeroAddress,
+      name: r[0] ?? "Unknown", symbol: r[1] ?? "?", logo: ipfsToHttp(info?.[1] || ""), description: desc,
+      twitter: info?.[3]?.twitter || "",
+      bler: /launched on BLER/i.test(desc),
+      graduated: !!r[5],
+      progress: r[3] != null && r[4] ? Math.min(1, Number((r[3] * 10000n) / r[4]) / 10000) : null,
+      createdAt: Number(head.timestamp) * 1000 - Number(head.number - l.blockNumber) * BLOCK_MS,
+    };
+  });
+}
+
+/** Newest Pons V2 launches (all launchpads). */
+export async function fetchLatest({ limit = 24, lookback = 150_000n } = {}) {
+  const c = readClient();
+  const head = await c.getBlockNumber();
+  const logs = await c.getLogs({ address: FACTORY, event: launchedEvent, fromBlock: head - lookback, toBlock: head });
+  logs.sort((a, b) => (a.blockNumber < b.blockNumber ? 1 : -1));
+  return describeLaunches(c, logs.slice(0, limit));
+}
+
+/** Every Pons V2 token deployed by this wallet (scans back ~3 months). */
+export async function fetchByDeployer(deployer, { chunks = 10, limit = 60 } = {}) {
+  const c = readClient();
+  const head = await c.getBlockNumber();
+  let logs = [];
+  for (let i = 0n, to = head; i < BigInt(chunks) && to > 0n; i++, to -= LOG_SPAN) {
+    const from = to > LOG_SPAN ? to - LOG_SPAN + 1n : 0n;
+    logs = logs.concat(await c.getLogs({ address: FACTORY, event: launchedEvent, args: { deployer }, fromBlock: from, toBlock: to }));
+  }
+  logs.sort((a, b) => (a.blockNumber < b.blockNumber ? 1 : -1));
+  return describeLaunches(c, logs.slice(0, limit));
+}
+
+/** Resolve a launch tx hash: { status: "pending" | "failed" | "live", token? }. */
+export async function checkLaunchTx(hash) {
+  const c = readClient();
+  const receipt = await c.getTransactionReceipt({ hash }).catch(() => null);
+  if (!receipt) return { status: "pending" };
+  if (receipt.status !== "success") return { status: "failed" };
+  const [log] = parseEventLogs({ abi: factoryAbi, eventName: "TokenLaunched", logs: receipt.logs });
+  return log ? { status: "live", token: log.args.token, curve: log.args.curve } : { status: "failed" };
+}
+
+window.blerPons = { readStatus, launchToken, fetchLatest, fetchByDeployer, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));
