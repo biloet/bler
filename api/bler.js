@@ -19,6 +19,10 @@ const SAFE_LAG = 30n; // blocks before a window counts as final
 // BLER_MARKER only exists so the filter can be tested against other tokens.
 const MARKER = new RegExp(process.env.BLER_MARKER || "launched on BLER", "i");
 const CALLS_PER_MULTICALL = 200;
+// Tokens hidden from BLER's Explore (they still exist on chain). Lowercase.
+const HIDDEN = new Set([
+  "0x9991836a0b1c079dbb11af4cdca9c0098f0ff4cd", // $VILO
+]);
 
 const chain = {
   id: 4663,
@@ -67,7 +71,7 @@ async function scanWindow(w, head) {
   }
   const hits = logs
     .map((l, i) => ({ l, info: infos[i]?.status === "success" ? infos[i].result : null }))
-    .filter((x) => x.info && MARKER.test(x.info[2] || ""));
+    .filter((x) => x.info && MARKER.test(x.info[2] || "") && !HIDDEN.has(x.l.args.token.toLowerCase()));
 
   let tokens = [];
   if (hits.length) {

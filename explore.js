@@ -7,6 +7,11 @@ const $ = (s) => document.querySelector(s);
 const pons = () => window.blerPons;
 const LAUNCH_KEY = "bler-launches";
 const PAGE_TARGET = 24; // keep loading older windows until we have this many
+// Tokens hidden from Explore (they still exist on chain). Keep in sync with api/bler.js.
+const HIDDEN = new Set([
+  "0x9991836a0b1c079dbb11af4cdca9c0098f0ff4cd", // $VILO
+]);
+const visible = (t) => !(t.token && HIDDEN.has(t.token.toLowerCase()));
 
 let tab = "all";
 let highlight = null;
@@ -104,6 +109,7 @@ function render() {
     const chain = state.mineFor && sameAddr(state.mineFor, w?.address) ? state.mine || [] : [];
     list = w?.address ? [...pendingFor(chain, w.address), ...chain] : [];
   }
+  list = list.filter(visible);
   const grid = $("#launches");
   if (loading && !list.length) {
     grid.innerHTML = Array.from({ length: 3 }, () => '<div class="p-card card skeleton"></div>').join("");
