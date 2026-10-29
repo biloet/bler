@@ -602,9 +602,9 @@ body { background: #050507; }
   background: linear-gradient(100deg, #c9c1ff, #7af5e6 55%, #c6f432);
   -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
   padding-right: .02em;
-  display: inline-block; transition: opacity .35s, transform .35s, filter .35s; }
-#rotWord.out { opacity: 0; transform: translateY(-30%); filter: blur(8px); }
-#rotWord.in-start { opacity: 0; transform: translateY(30%); filter: blur(8px); transition: none; }
+  display: inline-block; transition: opacity .35s, transform .35s; }
+#rotWord.out { opacity: 0; transform: translateY(-35%); }
+#rotWord.in-start { opacity: 0; transform: translateY(35%); transition: none; }
 .hl-green { color: var(--green); }
 
 h1, h2, h3 { text-wrap: balance; }
