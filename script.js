@@ -86,7 +86,7 @@
       toast("Connect your wallet first, then launch");
       return;
     }
-    if (!window.blerPons) return toast("Pons V2 is still loading — try again in a second");
+    if (!window.blerPons) return toast("Still loading — try again in a second");
 
     const data = new FormData(e.target);
     const handle = String(data.get("handle")).trim().replace(/^@+/, "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 30);
@@ -116,7 +116,7 @@
       closeModals();
       e.target.reset();
       document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
-      toast(`$${symbol} is live on Pons V2 🚀`);
+      toast(`$${symbol} is live 🚀`);
     } catch (err) {
       setStatus(err?.message || "Launch failed", "err");
     } finally {
@@ -128,7 +128,7 @@
   $$(".btn-buy, .btn-sell").forEach((b) =>
     b.addEventListener("click", () =>
       document.getElementById("explore").scrollIntoView({ behavior: "smooth" }) ||
-      toast("Pick a token in Explore — or paste any Pons V2 token address")
+      toast("Pick a token in Explore — or paste a token address")
     )
   );
 

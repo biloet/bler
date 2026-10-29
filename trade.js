@@ -325,7 +325,7 @@ function renderTrades() {
 window.addEventListener("resize", () => { if (!$("#tradeModal").hidden) renderChart(); });
 
 async function open(addr) {
-  if (!pons()) return ui().toast("Pons V2 is still loading — try again in a second");
+  if (!pons()) return ui().toast("Still loading — try again in a second");
   if (!isAddress(addr)) return ui().toast("That doesn't look like a token address");
   const token = getAddress(addr);
   clearInterval(refreshTimer); // stop refreshing the previous token

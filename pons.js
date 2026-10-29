@@ -80,12 +80,12 @@ const tokenAbi = parseAbi([
 ]);
 
 const FRIENDLY = {
-  NotWhitelisted: "This wallet isn't allowed to launch on Pons V2 yet — launching is gated by Pons.",
+  NotWhitelisted: "This wallet isn't allowed to launch yet — launching is currently gated.",
   LaunchFeeNotPaid: "The launch fee wasn't paid in full. Try again.",
-  CreatorTaxTooHigh: "Creator fee is above the Pons V2 limit. Pick a lower fee.",
-  LaunchEconomicsMismatch: "Pons updated its curve settings a moment ago. Try again.",
-  LaunchConfigDisabled: "Pons has paused this launch type right now.",
-  PairTokenNotApproved: "ETH pairing isn't enabled on Pons right now.",
+  CreatorTaxTooHigh: "Creator fee is above the allowed limit. Pick a lower fee.",
+  LaunchEconomicsMismatch: "Curve settings changed a moment ago. Try again.",
+  LaunchConfigDisabled: "This launch type is paused right now.",
+  PairTokenNotApproved: "ETH pairing isn't enabled right now.",
   SlippageExceeded: "Price moved more than your slippage. Try again or raise slippage.",
   CurveGraduated: "This token has graduated to Uniswap V4 — it no longer trades on the curve.",
   ZeroAmount: "Enter an amount greater than zero.",
@@ -101,7 +101,7 @@ function friendly(err) {
   if (err instanceof BaseError) {
     const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
     const name = revert?.data?.errorName;
-    if (name) return new LaunchError(FRIENDLY[name] || `Pons V2 rejected the launch (${name}).`);
+    if (name) return new LaunchError(FRIENDLY[name] || `The launch was rejected (${name}).`);
     if (/insufficient funds/i.test(err.message)) return new LaunchError("Not enough ETH for the launch fee plus gas.");
     return new LaunchError(err.shortMessage || err.message);
   }
@@ -136,7 +136,7 @@ function randomSalt() {
 export async function readStatus(provider, account) {
   const { publicClient } = clients(provider);
   const code = await publicClient.getBytecode({ address: FACTORY });
-  if (!code || code === "0x") throw new LaunchError("Pons V2 factory not found on this network. Switch to Robinhood Chain.");
+  if (!code || code === "0x") throw new LaunchError("Launch contract not found on this network. Switch to Robinhood Chain.");
   const read = (functionName, args) => publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName, args });
   const [launchEnabled, canLaunch, launchFee, maxCreatorTaxBps, config] = await Promise.all([
     read("launchEnabled"),
@@ -156,13 +156,13 @@ export async function launchToken({ provider, account, name, symbol, handle, pla
   try {
     const { publicClient, walletClient } = clients(provider);
 
-    onStep("Checking Pons V2…");
+    onStep("Checking launch settings…");
     const status = await readStatus(provider, account);
-    if (!status.launchEnabled) throw new LaunchError("Pons V2 launches are paused right now.");
+    if (!status.launchEnabled) throw new LaunchError("Launches are paused right now.");
     if (!status.configEnabled) throw new LaunchError(FRIENDLY.LaunchConfigDisabled);
     if (!status.canLaunch) throw new LaunchError(FRIENDLY.NotWhitelisted);
     if (BigInt(creatorTaxBps) > status.maxCreatorTaxBps) {
-      throw new LaunchError(`Creator fee is above the Pons V2 limit (${Number(status.maxCreatorTaxBps) / 100}%).`);
+      throw new LaunchError(`Creator fee is above the allowed limit (${Number(status.maxCreatorTaxBps) / 100}%).`);
     }
 
     const expectedEconomics = await publicClient.readContract({
@@ -236,7 +236,7 @@ export async function getMarket(token, { provider, account } = {}) {
   try {
     const { publicClient } = clients(provider);
     const lt = await publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "getLaunchedToken", args: [token] });
-    if (!lt.exists) throw new LaunchError("That address isn't a Pons V2 token.");
+    if (!lt.exists) throw new LaunchError("That address isn't a token launched on this curve.");
     const curve = lt.curve;
     const rc = (address, abi, functionName, args) => publicClient.readContract({ address, abi, functionName, args });
     const [name, symbol, decimals, totalSupply, info, reserves, realQuote, sellable, feeBps, creatorTaxBps, threshold, graduated, native] = await Promise.all([
