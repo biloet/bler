@@ -29,9 +29,11 @@ npx serve .
 | Launch | `launchToken(TokenParams, 0, address(0) /* ETH */, [])` with `value = launchFee()` |
 
 The factory ABI matches public Pons V2 integrations (pons-bundler, LOCKEY);
-Pons has not published an official ABI. Launching is gated by
-`canLaunch(address)` — wallets Pons hasn't allowed will see a clear message
-and no transaction is sent.
+Pons has not published an official ABI. It was verified against mainnet
+(block 101070906): `launchEnabled = true`, `canLaunch` open, `launchFee =
+0.0005 ETH`, `maxCreatorTaxBps = 1000`, and a `launchToken` call built by
+`pons.js` simulates successfully. `canLaunch` is still checked on every launch
+in case Pons gates it again.
 
 The Explore list is stored per browser for now; reading launches from chain
 for all visitors is the next step.
