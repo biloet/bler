@@ -3,8 +3,8 @@
 // (pons-bundler, LOCKEY). Every launch reads live factory state and simulates
 // the call before asking the wallet to sign.
 import {
-  createPublicClient, createWalletClient, custom, parseAbi, parseEventLogs,
-  formatEther, zeroAddress, BaseError, ContractFunctionRevertedError,
+  createPublicClient, createWalletClient, custom, http, parseAbi, parseEventLogs,
+  formatEther, formatUnits, zeroAddress, BaseError, ContractFunctionRevertedError,
 } from "./assets/vendor/viem-2.21.0.js";
 
 export const CHAIN_ID = 4663;
@@ -32,6 +32,8 @@ const factoryAbi = parseAbi([
   "function canLaunch(address launcher) view returns (bool)",
   "function maxCreatorTaxBps() view returns (uint256)",
   "function getLaunchConfig(uint256 id) view returns (LaunchConfig)",
+  "struct LaunchedToken { address token; address curve; address deployer; address creatorFeeRecipient; address pairToken; uint256 graduationThreshold; uint24 poolFee; int24 tickSpacing; uint16 creatorTaxBps; bool buybackEnabled; uint8 phase; uint256 sweptQuote; uint256 sweptTokens; uint256 sweptAt; bool exists; }",
+  "function getLaunchedToken(address token) view returns (LaunchedToken)",
   "event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)",
   "error LaunchFeeNotPaid()",
   "error NotWhitelisted()",
@@ -43,6 +45,37 @@ const factoryAbi = parseAbi([
   "error LaunchConfigDisabled()",
 ]);
 
+const curveAbi = parseAbi([
+  "function buy(uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut)",
+  "function sell(uint256 tokensIn, uint256 minQuoteOut, address recipient) returns (uint256 quoteOut)",
+  "function isNativeQuote() view returns (bool)",
+  "function getReserves() view returns (uint256 quoteReserve, uint256 tokenReserve)",
+  "function realQuoteReserve() view returns (uint256)",
+  "function sellableTokens() view returns (uint256)",
+  "function feeBps() view returns (uint256)",
+  "function creatorTaxBps() view returns (uint256)",
+  "function currentSnipeTaxBps(address recipient) view returns (uint256)",
+  "function graduationThreshold() view returns (uint256)",
+  "function graduated() view returns (bool)",
+  "error CurveGraduated()",
+  "error SlippageExceeded()",
+  "error NativeValueMismatch()",
+  "error UnexpectedNativeValue()",
+  "error ZeroAmount()",
+]);
+
+const tokenAbi = parseAbi([
+  "struct Socials { string twitter; string telegram; string discord; string website; string farcaster; }",
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function getTokenInfo() view returns (address tokenDeployer, string tokenLogo, string tokenDescription, Socials tokenSocials)",
+]);
+
 const FRIENDLY = {
   NotWhitelisted: "This wallet isn't allowed to launch on Pons V2 yet — launching is gated by Pons.",
   LaunchFeeNotPaid: "The launch fee wasn't paid in full. Try again.",
@@ -50,6 +83,9 @@ const FRIENDLY = {
   LaunchEconomicsMismatch: "Pons updated its curve settings a moment ago. Try again.",
   LaunchConfigDisabled: "Pons has paused this launch type right now.",
   PairTokenNotApproved: "ETH pairing isn't enabled on Pons right now.",
+  SlippageExceeded: "Price moved more than your slippage. Try again or raise slippage.",
+  CurveGraduated: "This token has graduated to Uniswap V4 — it no longer trades on the curve.",
+  ZeroAmount: "Enter an amount greater than zero.",
 };
 
 export class LaunchError extends Error {}
@@ -70,7 +106,7 @@ function friendly(err) {
 }
 
 function clients(provider) {
-  const transport = custom(provider);
+  const transport = provider ? custom(provider) : http(chain.rpcUrls.default.http[0]);
   return {
     publicClient: createPublicClient({ chain, transport }),
     walletClient: createWalletClient({ chain, transport }),
@@ -165,5 +201,156 @@ export async function launchToken({ provider, account, name, symbol, handle, pla
   }
 }
 
-window.blerPons = { readStatus, launchToken, LaunchError, EXPLORER, CHAIN_ID };
+// ---------------------------------------------------------------------------
+// Trading on the bonding curve (phase 0, native-ETH pairs)
+// Quote math mirrors the curve: constant product on reserves, fees outside.
+// ---------------------------------------------------------------------------
+const BPS = 10_000n;
+const amountOut = (inAmt, rIn, rOut) => (inAmt <= 0n ? 0n : (inAmt * rOut) / (rIn + inAmt));
+const amountIn = (outAmt, rIn, rOut) => (outAmt * rIn) / (rOut - outAmt) + 1n;
+export const applySlippage = (amt, bps) => (bps >= BPS ? 0n : (amt * (BPS - BigInt(bps))) / BPS);
+
+function ipfsToHttp(url) {
+  if (!url) return "";
+  if (url.startsWith("ipfs://")) return "https://ipfs.io/ipfs/" + url.slice(7);
+  return /^https?:\/\//.test(url) ? url : "";
+}
+
+/** Everything the trade panel needs about a token, read live from chain. */
+export async function getMarket(token, { provider, account } = {}) {
+  try {
+    const { publicClient } = clients(provider);
+    const lt = await publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "getLaunchedToken", args: [token] });
+    if (!lt.exists) throw new LaunchError("That address isn't a Pons V2 token.");
+    const curve = lt.curve;
+    const rc = (address, abi, functionName, args) => publicClient.readContract({ address, abi, functionName, args });
+    const [name, symbol, decimals, totalSupply, info, reserves, realQuote, sellable, feeBps, creatorTaxBps, threshold, graduated, native] = await Promise.all([
+      rc(token, tokenAbi, "name"),
+      rc(token, tokenAbi, "symbol"),
+      rc(token, tokenAbi, "decimals"),
+      rc(token, tokenAbi, "totalSupply"),
+      rc(token, tokenAbi, "getTokenInfo").catch(() => null),
+      rc(curve, curveAbi, "getReserves"),
+      rc(curve, curveAbi, "realQuoteReserve"),
+      rc(curve, curveAbi, "sellableTokens"),
+      rc(curve, curveAbi, "feeBps"),
+      rc(curve, curveAbi, "creatorTaxBps"),
+      rc(curve, curveAbi, "graduationThreshold"),
+      rc(curve, curveAbi, "graduated"),
+      rc(curve, curveAbi, "isNativeQuote"),
+    ]);
+    let balance = 0n, allowance = 0n, ethBalance = 0n, snipeBps = 0n;
+    if (account) {
+      [balance, allowance, ethBalance, snipeBps] = await Promise.all([
+        rc(token, tokenAbi, "balanceOf", [account]),
+        rc(token, tokenAbi, "allowance", [account, curve]),
+        publicClient.getBalance({ address: account }),
+        rc(curve, curveAbi, "currentSnipeTaxBps", [account]),
+      ]);
+    }
+    const [quoteReserve, tokenReserve] = reserves;
+    const scale = 10n ** BigInt(decimals);
+    // price in ETH per whole token (float, display only)
+    const priceEth = (Number(quoteReserve) / 1e18) / (Number(tokenReserve) / Number(scale));
+    return {
+      token, curve, name, symbol, decimals: Number(decimals), totalSupply,
+      logo: ipfsToHttp(info?.[1] || ""), description: info?.[2] || "", socials: info?.[3] || null,
+      quoteReserve, tokenReserve, realQuote, sellable, feeBps, creatorTaxBps, snipeBps, threshold,
+      tradable: lt.phase === 0 && !graduated, native, phase: lt.phase,
+      priceEth, mcapEth: priceEth * Number(totalSupply) / Number(scale),
+      progress: threshold > 0n ? Math.min(1, Number(realQuote * 10000n / threshold) / 10000) : 0,
+      balance, allowance, ethBalance,
+    };
+  } catch (err) {
+    throw friendly(err);
+  }
+}
+
+/** Expected tokens for ethIn (wei) on the curve, including fees, snipe tax and the sellable cap. */
+export function quoteBuy(m, ethIn) {
+  if (ethIn <= 0n) return { tokensOut: 0n, spent: 0n };
+  let snipe = m.snipeBps;
+  const maxSnipe = BPS - m.feeBps - m.creatorTaxBps - 100n;
+  if (snipe > maxSnipe) snipe = maxSnipe < 0n ? 0n : maxSnipe;
+  const net = ethIn - (ethIn * m.feeBps) / BPS - (ethIn * m.creatorTaxBps) / BPS - (ethIn * snipe) / BPS;
+  let tokensOut = amountOut(net, m.quoteReserve, m.tokenReserve);
+  let spent = ethIn;
+  if (tokensOut > m.sellable) {
+    tokensOut = m.sellable;
+    const needNet = amountIn(m.sellable, m.quoteReserve, m.tokenReserve);
+    const denom = BPS - m.feeBps - m.creatorTaxBps - snipe;
+    const gross = (needNet * BPS + denom - 1n) / denom;
+    spent = gross < ethIn ? gross : ethIn;
+  }
+  return { tokensOut, spent, snipeBps: snipe };
+}
+
+/** Expected ETH (wei) for selling tokensIn on the curve, after fees. */
+export function quoteSell(m, tokensIn) {
+  if (tokensIn <= 0n) return { ethOut: 0n };
+  const gross = amountOut(tokensIn, m.tokenReserve, m.quoteReserve);
+  return { ethOut: gross - (gross * m.feeBps) / BPS - (gross * m.creatorTaxBps) / BPS };
+}
+
+function assertTradable(m) {
+  if (!m.tradable) throw new LaunchError(FRIENDLY.CurveGraduated);
+  if (!m.native) throw new LaunchError("This token is paired with an ERC-20, not ETH. BLER trades ETH pairs only for now.");
+}
+
+export async function buy({ provider, account, market: m, ethIn, slippageBps, onStep = () => {} }) {
+  try {
+    assertTradable(m);
+    const { publicClient, walletClient } = clients(provider);
+    const q = quoteBuy(m, ethIn);
+    if (q.tokensOut === 0n) throw new LaunchError(FRIENDLY.ZeroAmount);
+    const minOut = applySlippage(q.tokensOut, slippageBps);
+    onStep("Simulating buy…");
+    const { request, result } = await publicClient.simulateContract({
+      account, address: m.curve, abi: curveAbi, functionName: "buy", args: [ethIn, minOut, account], value: ethIn,
+    });
+    onStep("Confirm the buy in your wallet…");
+    const hash = await walletClient.writeContract(request);
+    onStep("Waiting for Robinhood Chain…");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 1000, timeout: 120_000 });
+    if (receipt.status !== "success") throw new LaunchError("The buy transaction reverted.");
+    return { hash, tokensOut: result };
+  } catch (err) {
+    throw friendly(err);
+  }
+}
+
+export async function sell({ provider, account, market: m, tokensIn, slippageBps, onStep = () => {} }) {
+  try {
+    assertTradable(m);
+    if (tokensIn <= 0n) throw new LaunchError(FRIENDLY.ZeroAmount);
+    if (tokensIn > m.balance) throw new LaunchError(`You only hold ${formatUnits(m.balance, m.decimals)} ${m.symbol}.`);
+    const { publicClient, walletClient } = clients(provider);
+    const allowance = await publicClient.readContract({ address: m.token, abi: tokenAbi, functionName: "allowance", args: [account, m.curve] });
+    if (allowance < tokensIn) {
+      onStep(`Step 1/2 — approve ${m.symbol} for selling in your wallet…`);
+      const approveHash = await walletClient.writeContract({
+        account, chain, address: m.token, abi: tokenAbi, functionName: "approve", args: [m.curve, tokensIn],
+      });
+      onStep("Waiting for approval…");
+      const r = await publicClient.waitForTransactionReceipt({ hash: approveHash, pollingInterval: 1000, timeout: 120_000 });
+      if (r.status !== "success") throw new LaunchError("The approval transaction reverted.");
+    }
+    const q = quoteSell(m, tokensIn);
+    const minOut = applySlippage(q.ethOut, slippageBps);
+    onStep("Simulating sell…");
+    const { request, result } = await publicClient.simulateContract({
+      account, address: m.curve, abi: curveAbi, functionName: "sell", args: [tokensIn, minOut, account],
+    });
+    onStep(allowance < tokensIn ? "Step 2/2 — confirm the sell in your wallet…" : "Confirm the sell in your wallet…");
+    const hash = await walletClient.writeContract(request);
+    onStep("Waiting for Robinhood Chain…");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 1000, timeout: 120_000 });
+    if (receipt.status !== "success") throw new LaunchError("The sell transaction reverted.");
+    return { hash, ethOut: result };
+  } catch (err) {
+    throw friendly(err);
+  }
+}
+
+window.blerPons = { readStatus, launchToken, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));

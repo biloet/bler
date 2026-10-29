@@ -16,7 +16,8 @@ npx serve .
 - `index.html` — page markup
 - `styles.css` — styling (dark, cinematic, mobile-first)
 - `script.js` — UI, Explore list, wallet connection (EIP-6963 / EIP-1193)
-- `pons.js` — Pons V2 launch: reads factory state, simulates, sends `launchToken`
+- `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
+- `trade.js` — Buy/Sell panel (opened from Explore or by pasting a token address)
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
 
@@ -34,6 +35,11 @@ Pons has not published an official ABI. It was verified against mainnet
 0.0005 ETH`, `maxCreatorTaxBps = 1000`, and a `launchToken` call built by
 `pons.js` simulates successfully. `canLaunch` is still checked on every launch
 in case Pons gates it again.
+
+Buy/sell trades on the bonding curve (phase 0, ETH pairs). Quotes use the
+curve's constant-product math minus curve + creator fees; every trade is
+simulated before signing. Selling approves the exact amount first if needed.
+Verified against mainnet with the SwapMeet ($MEET) curve.
 
 The Explore list is stored per browser for now; reading launches from chain
 for all visitors is the next step.

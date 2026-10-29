@@ -27,6 +27,7 @@
     document.body.style.overflow = "";
   }
   $$("[data-open-wallet]").forEach((b) => b.addEventListener("click", () => openModal("walletModal")));
+  window.blerUI = { openModal, closeModals, toast: (m) => toast(m) };
   $$("[data-open-launch]").forEach((b) => b.addEventListener("click", () => openModal("launchModal")));
   $$("[data-close]").forEach((b) => b.addEventListener("click", closeModals));
   document.addEventListener("keydown", (e) => e.key === "Escape" && closeModals());
@@ -82,7 +83,8 @@
     if (!card) return;
     const t = loadLaunches().find((x) => x.id === card.dataset.id);
     if (t?.status === "live" && /^0x[0-9a-fA-F]{40}$/.test(t.token)) {
-      window.open(`https://robinhoodchain.blockscout.com/token/${t.token}`, "_blank", "noopener");
+      if (window.blerTrade) window.blerTrade.open(t.token);
+      else window.open(`https://robinhoodchain.blockscout.com/token/${t.token}`, "_blank", "noopener");
     } else {
       toast("Draft — this one was saved before on-chain launching was live");
     }
@@ -170,9 +172,8 @@
 
   $$(".btn-buy, .btn-sell").forEach((b) =>
     b.addEventListener("click", () =>
-      window.blerWallet?.address
-        ? toast("Trading opens once the Pons V2 integration is live")
-        : openModal("walletModal")
+      document.getElementById("explore").scrollIntoView({ behavior: "smooth" }) ||
+      toast("Pick a token in Explore — or paste any Pons V2 token address")
     )
   );
 

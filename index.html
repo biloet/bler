@@ -148,6 +148,10 @@
         <h2>Fresh on BLER</h2>
         <p>Every token launched on BLER lands here, newest first.</p>
       </div>
+      <form class="lookup" id="lookupForm">
+        <input name="addr" placeholder="Paste any Pons V2 token address (0x…)" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <button type="submit" class="btn btn-light btn-sm">Trade</button>
+      </form>
       <div class="grid" id="launches"></div>
       <div class="empty card" id="launchesEmpty">
         <div class="empty-icon">🚀</div>
@@ -353,9 +357,61 @@
     </div>
   </div>
 
+  <!-- Trade modal -->
+  <div class="modal" id="tradeModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card trade-card" role="dialog" aria-modal="true" aria-labelledby="tradeTitle">
+      <div class="modal-head">
+        <div class="t-head">
+          <div class="t-logo" id="tLogo"></div>
+          <div class="t-title">
+            <h3 id="tradeTitle">Loading…</h3>
+            <div class="muted small" id="tSub"></div>
+          </div>
+        </div>
+        <button class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <div class="t-stats">
+        <div class="stat"><span>Price</span><strong id="tPrice">—</strong></div>
+        <div class="stat"><span>Market cap</span><strong id="tMcap">—</strong></div>
+        <div class="stat"><span>You hold</span><strong id="tHold">—</strong></div>
+      </div>
+      <div class="curve">
+        <div class="curve-head"><span>Bonding curve → Uniswap V4</span><span id="tProg">—</span></div>
+        <div class="curve-bar"><div class="curve-fill" id="tProgBar" style="width:0%"></div></div>
+      </div>
+      <div class="seg" role="tablist">
+        <button type="button" class="seg-btn active" data-side="buy" role="tab">Buy</button>
+        <button type="button" class="seg-btn" data-side="sell" role="tab">Sell</button>
+      </div>
+      <form id="tradeForm" class="form">
+        <label><span id="tAmtLabel">You pay (ETH)</span>
+          <input id="tAmt" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+        </label>
+        <div class="quick" id="tQuick"></div>
+        <div class="t-quote">
+          <div class="t-quote-row"><span class="muted">You receive ≈</span><b id="tOut">—</b></div>
+          <div class="t-quote-row muted small"><span>Minimum after slippage</span><span id="tMin">—</span></div>
+          <div class="t-quote-row muted small"><span>Fees</span><span id="tFees">—</span></div>
+        </div>
+        <label>Slippage
+          <select id="tSlip">
+            <option value="100">1%</option>
+            <option value="500" selected>5%</option>
+            <option value="1000">10%</option>
+          </select>
+        </label>
+        <p class="launch-status" id="tStatus" hidden></p>
+        <button type="submit" class="btn btn-lg full t-submit buy" id="tBtn">Buy</button>
+        <a class="muted small t-link" id="tLink" target="_blank" rel="noopener">View on Blockscout ↗</a>
+      </form>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
   <script type="module" src="pons.js"></script>
+  <script type="module" src="trade.js"></script>
 </body>
 </html>
