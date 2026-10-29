@@ -344,3 +344,22 @@
   }, { threshold: 0.4 });
   counters.forEach((c) => co.observe(c));
 })();
+
+// Rotating hero word
+(() => {
+  const el = document.getElementById("rotWord");
+  if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const words = ["clout", "hype", "fans", "vibe", "name"];
+  let i = 0;
+  setTimeout(() => setInterval(() => {
+    el.classList.add("out");
+    setTimeout(() => {
+      i = (i + 1) % words.length;
+      el.textContent = words[i];
+      el.classList.remove("out");
+      el.classList.add("in-start");
+      void el.offsetWidth;
+      el.classList.remove("in-start");
+    }, 350);
+  }, 2400), 3000);
+})();
