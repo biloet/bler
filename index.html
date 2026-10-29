@@ -386,6 +386,16 @@
         <div class="stat"><span>Market cap</span><strong id="tMcap">—</strong></div>
         <div class="stat"><span>You hold</span><strong id="tHold">—</strong></div>
       </div>
+      <div class="t-chart">
+        <div class="t-chart-head">
+          <span class="muted small">Price · <span class="dot-buy"></span> buy <span class="dot-sell"></span> sell</span>
+          <span class="t-tip" id="tTip"></span>
+        </div>
+        <div class="t-chart-box" id="tChartBox">
+          <svg id="tSvg" aria-label="Price chart with buys and sells"></svg>
+          <div class="t-chart-empty muted small" id="tChartMsg">Loading chart…</div>
+        </div>
+      </div>
       <div class="curve">
         <div class="curve-head"><span>Bonding curve → Uniswap V4</span><span id="tProg">—</span></div>
         <div class="curve-bar"><div class="curve-fill" id="tProgBar" style="width:0%"></div></div>
@@ -415,6 +425,10 @@
         <button type="submit" class="btn btn-lg full t-submit buy" id="tBtn">Buy</button>
         <a class="muted small t-link" id="tLink" target="_blank" rel="noopener">View on Blockscout ↗</a>
       </form>
+      <div class="t-trades">
+        <div class="t-trades-head"><span>Recent trades</span><span class="muted small" id="tTradesCount"></span></div>
+        <div id="tTrades"></div>
+      </div>
     </div>
   </div>
 

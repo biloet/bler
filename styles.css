@@ -774,3 +774,26 @@ h1, h2, h3 { text-wrap: balance; }
 .ca-addr { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12.5px; color: var(--text); word-break: break-all; line-height: 1.35; }
 .ca-copy { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--muted); padding: 5px 9px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,.04); }
 .ca-copy.done { color: var(--green); border-color: rgba(62,224,143,.4); }
+
+/* Price chart + trades */
+.t-chart { margin-bottom: 14px; }
+.t-chart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.t-tip { font-family: var(--mono); font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot-buy, .dot-sell { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin: 0 2px 0 6px; vertical-align: 1px; }
+.dot-buy { background: var(--green); } .dot-sell { background: var(--red); }
+.t-chart-box { position: relative; height: 150px; border-radius: 14px; background: #0f0f12; border: 1px solid var(--border); overflow: hidden; }
+.t-chart-box svg { width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: crosshair; }
+.t-chart-empty { position: absolute; inset: auto 0 10px; text-align: center; pointer-events: none; }
+.t-trades { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+.t-trades-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; margin-bottom: 8px; }
+.t-row {
+  display: grid; grid-template-columns: 44px 1fr auto; grid-template-areas: "side eth tok" "side who who";
+  column-gap: 10px; row-gap: 2px; align-items: center; padding: 9px 4px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px;
+}
+.t-row:last-child { border-bottom: 0; }
+.t-row:hover { background: rgba(255,255,255,.03); }
+.t-side { grid-area: side; font-weight: 800; font-size: 12px; text-transform: uppercase; }
+.t-eth { grid-area: eth; font-family: var(--mono); font-weight: 600; }
+.t-tok { grid-area: tok; font-family: var(--mono); font-size: 12px; text-align: right; }
+.t-who { grid-area: who; font-family: var(--mono); font-size: 11px; }
+.t-trades-empty { padding: 8px 4px; }

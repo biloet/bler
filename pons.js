@@ -58,6 +58,8 @@ const curveAbi = parseAbi([
   "function currentSnipeTaxBps(address recipient) view returns (uint256)",
   "function graduationThreshold() view returns (uint256)",
   "function graduated() view returns (bool)",
+  "event CurveBuy(address indexed buyer, address indexed recipient, uint256 quoteIn, uint256 tokensOut, uint256 fee, uint256 tax)",
+  "event CurveSell(address indexed seller, address indexed recipient, uint256 tokensIn, uint256 quoteOut, uint256 fee, uint256 tax)",
   "error CurveGraduated()",
   "error SlippageExceeded()",
   "error NativeValueMismatch()",
@@ -433,6 +435,70 @@ export async function fetchByDeployer(deployer, { chunks = 10, limit = 60 } = {}
   return describeLaunches(c, logs.slice(0, limit));
 }
 
+// ---------------------------------------------------------------------------
+// Trades on a curve (for the chart and the trade list)
+// CurveBuy: quoteIn is gross ETH; CurveSell: quoteOut is net ETH. Execution
+// price on the curve = ETH that actually hit the curve / tokens.
+// ---------------------------------------------------------------------------
+const tradeEvents = curveAbi.filter((x) => x.type === "event");
+
+async function findLaunchBlock(c, token, head) {
+  for (let i = 0n, to = head; i < 10n && to > 0n; i++, to -= LOG_SPAN) {
+    const from = to > LOG_SPAN ? to - LOG_SPAN + 1n : 0n;
+    const [log] = await c.getLogs({ address: FACTORY, event: launchedEvent, args: { token }, fromBlock: from, toBlock: to });
+    if (log) return log.blockNumber;
+  }
+  return head > LOG_SPAN ? head - LOG_SPAN : 0n;
+}
+
+/**
+ * Trades for a market. Pass `since` (a previous result) to fetch only new ones.
+ * Returns { launchBlock, launchTs, toBlock, trades: [{ side, account, eth, tokens, price, block, ts, hash }] }
+ */
+export async function fetchTrades(m, since) {
+  const c = readClient();
+  const headBlock = await c.getBlock();
+  const head = headBlock.number;
+  const headTs = Number(headBlock.timestamp) * 1000;
+  let launchBlock = since?.launchBlock, launchTs = since?.launchTs;
+  if (launchBlock == null) {
+    launchBlock = await findLaunchBlock(c, m.token, head);
+    launchTs = Number((await c.getBlock({ blockNumber: launchBlock })).timestamp) * 1000;
+  }
+  const fromBlock = since ? since.toBlock + 1n : launchBlock;
+  let logs = [];
+  for (let from = fromBlock; from <= head; from += LOG_SPAN) {
+    const to = from + LOG_SPAN - 1n < head ? from + LOG_SPAN - 1n : head;
+    logs = logs.concat(await c.getLogs({ address: m.curve, events: tradeEvents, fromBlock: from, toBlock: to }));
+  }
+  // timestamps: interpolate between launch block and head (blocks are ~0.1s)
+  const span = Number(head - launchBlock) || 1;
+  const tsOf = (b) => launchTs + ((headTs - launchTs) * Number(b - launchBlock)) / span;
+  const scale = 10 ** m.decimals;
+  const trades = logs.map((l) => {
+    const a = l.args;
+    const buy = l.eventName === "CurveBuy";
+    const tokens = Number(buy ? a.tokensOut : a.tokensIn) / scale;
+    const ethGross = Number(buy ? a.quoteIn : a.quoteOut + a.fee + a.tax) / 1e18;
+    const ethNet = Number(buy ? a.quoteIn - a.fee - a.tax : a.quoteOut + a.fee + a.tax) / 1e18;
+    return {
+      side: buy ? "buy" : "sell",
+      account: buy ? a.recipient : a.seller,
+      eth: buy ? ethGross : Number(a.quoteOut) / 1e18,
+      tokens,
+      price: tokens > 0 ? ethNet / tokens : 0,
+      block: l.blockNumber,
+      ts: tsOf(l.blockNumber),
+      hash: l.transactionHash,
+      i: l.logIndex,
+    };
+  }).filter((t) => t.tokens > 0);
+  return {
+    launchBlock, launchTs, toBlock: head, headTs,
+    trades: (since?.trades || []).concat(trades),
+  };
+}
+
 /** Live curve state for a list of tokens: Map(token -> { progress, graduated }). */
 export async function fetchCurveStats(items) {
   const out = new Map();
@@ -466,5 +532,5 @@ export async function checkLaunchTx(hash) {
   return log ? { status: "live", token: log.args.token, curve: log.args.curve } : { status: "failed" };
 }
 
-window.blerPons = { readStatus, launchToken, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
+window.blerPons = { readStatus, launchToken, fetchTrades, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));

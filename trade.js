@@ -171,12 +171,164 @@ async function load(token) {
   const { provider, account } = readWallet();
   market = await pons().getMarket(token, { provider, account });
   renderMarket();
+  loadTrades(); // chart + trade list load in the background
 }
+
+// ---------------------------------------------------------------------------
+// Chart + recent trades
+// ---------------------------------------------------------------------------
+let tradeData = null; // { token, launchBlock, launchTs, toBlock, trades }
+let tradesBusy = false;
+
+const timeAgo = (t) => {
+  const s = Math.max(1, Math.round((Date.now() - t) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+};
+
+async function loadTrades() {
+  if (tradesBusy || !market) return;
+  const m = market;
+  tradesBusy = true;
+  try {
+    const since = tradeData && tradeData.token === m.token ? tradeData : undefined;
+    const res = await pons().fetchTrades(m, since);
+    if (market?.token !== m.token) return; // user switched tokens meanwhile
+    tradeData = { ...res, token: m.token };
+    renderChart();
+    renderTrades();
+  } catch (err) {
+    if (!tradeData || tradeData.token !== m.token) {
+      $("#tChartMsg").hidden = false;
+      $("#tChartMsg").textContent = "Couldn't load trades — retrying…";
+    }
+  } finally {
+    tradesBusy = false;
+  }
+}
+
+function chartPoints() {
+  const m = market, d = tradeData;
+  // launch price: phantom ETH reserve / total supply (all supply starts on the curve)
+  const phantom = Number(m.quoteReserve - m.realQuote) / 1e18;
+  const startPrice = phantom / (Number(m.totalSupply) / 10 ** m.decimals);
+  const pts = [{ ts: d.launchTs, price: startPrice, side: "launch" }];
+  for (const t of d.trades) pts.push(t);
+  pts.push({ ts: Math.max(Date.now(), d.headTs), price: m.priceEth, side: "now" });
+  return pts;
+}
+
+function renderChart() {
+  const svg = $("#tSvg"), msg = $("#tChartMsg");
+  if (!market || !tradeData) return;
+  const pts = chartPoints();
+  const W = svg.clientWidth || 320, H = svg.clientHeight || 140, P = 6;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  // x = trade order (evenly spaced), so bursts of trades stay readable; the
+  // tooltip shows when each one happened
+  let lo = Math.min(...pts.map((p) => p.price)), hi = Math.max(...pts.map((p) => p.price));
+  if (hi === lo) { hi *= 1.05; lo *= 0.95; }
+  const pad = (hi - lo) * 0.12;
+  lo -= pad; hi += pad;
+  const x = (i) => P + (i / Math.max(1, pts.length - 1)) * (W - 2 * P);
+  const y = (pr) => H - P - ((pr - lo) / (hi - lo)) * (H - 2 * P);
+  const xy = pts.map((p, i) => [x(i), y(p.price)]);
+  const line = xy.map(([a, b], i) => `${i ? "L" : "M"}${a.toFixed(1)},${b.toFixed(1)}`).join(" ");
+  const area = `${line} L${xy[xy.length - 1][0].toFixed(1)},${H} L${xy[0][0].toFixed(1)},${H} Z`;
+  const up = pts[pts.length - 1].price >= pts[0].price;
+  const col = up ? "#3ee08f" : "#ff5a5f";
+  // dots for the most recent 80 trades
+  const trades = pts.map((p, i) => ({ p, i })).filter(({ p }) => p.side === "buy" || p.side === "sell").slice(-80);
+  const dots = trades.map(({ p, i }) =>
+    `<circle cx="${xy[i][0].toFixed(1)}" cy="${xy[i][1].toFixed(1)}" r="3.2" fill="${p.side === "buy" ? "#3ee08f" : "#ff5a5f"}" stroke="#0f0f12" stroke-width="1.2"/>`
+  ).join("");
+  svg.innerHTML = `
+    <defs><linearGradient id="tFill" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${col}" stop-opacity=".28"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#tFill)"/>
+    <path d="${line}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round"/>
+    ${dots}
+    <line id="tCross" x1="0" x2="0" y1="0" y2="${H}" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 3" visibility="hidden"/>
+    <circle id="tCrossDot" r="4.5" fill="#fff" visibility="hidden"/>`;
+  msg.hidden = tradeData.trades.length > 0;
+  msg.textContent = "No trades yet — be the first";
+  svg._pts = pts;
+  svg._xy = xy;
+  showTip(null);
+}
+
+function showTip(i) {
+  const svg = $("#tSvg"), tip = $("#tTip");
+  const cross = svg.querySelector("#tCross"), dot = svg.querySelector("#tCrossDot");
+  if (i == null || !svg._pts) {
+    cross?.setAttribute("visibility", "hidden");
+    dot?.setAttribute("visibility", "hidden");
+    tip.textContent = market ? `${fmtNum(market.priceEth)} ETH` : "";
+    tip.className = "t-tip";
+    return;
+  }
+  const p = svg._pts[i], [cx, cy] = svg._xy[i];
+  cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible");
+  dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("visibility", "visible");
+  const label = p.side === "buy" ? "Buy" : p.side === "sell" ? "Sell" : p.side === "launch" ? "Launch" : "Now";
+  tip.textContent = `${label} · ${fmtNum(p.price)} ETH · ${timeAgo(p.ts)}`;
+  tip.className = "t-tip " + (p.side === "buy" ? "up" : p.side === "sell" ? "down" : "");
+}
+
+function nearestPoint(e) {
+  const svg = $("#tSvg");
+  if (!svg._xy) return null;
+  const r = svg.getBoundingClientRect();
+  const px = ((e.clientX - r.left) / r.width) * (svg.viewBox.baseVal.width || r.width);
+  let best = 0, bd = Infinity;
+  svg._xy.forEach(([x], i) => { const d = Math.abs(x - px); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+$("#tSvg").addEventListener("pointermove", (e) => showTip(nearestPoint(e)));
+$("#tSvg").addEventListener("pointerdown", (e) => showTip(nearestPoint(e)));
+$("#tSvg").addEventListener("pointerleave", () => showTip(null));
+
+function renderTrades() {
+  const box = $("#tTrades");
+  const list = tradeData.trades.slice(-12).reverse();
+  $("#tTradesCount").textContent = tradeData.trades.length ? `${tradeData.trades.length} total` : "";
+  if (!list.length) {
+    box.innerHTML = '<div class="muted small t-trades-empty">No trades yet.</div>';
+    return;
+  }
+  box.innerHTML = "";
+  for (const t of list) {
+    const a = document.createElement("a");
+    a.className = "t-row";
+    a.href = `${pons().EXPLORER}/tx/${t.hash}`;
+    a.target = "_blank";
+    a.rel = "noopener";
+    const side = document.createElement("span");
+    side.className = "t-side " + (t.side === "buy" ? "up" : "down");
+    side.textContent = t.side === "buy" ? "Buy" : "Sell";
+    const eth = document.createElement("span");
+    eth.className = "t-eth";
+    eth.textContent = `${fmtNum(t.eth)} ETH`;
+    const tok = document.createElement("span");
+    tok.className = "t-tok muted";
+    tok.textContent = `${fmtNum(t.tokens)} ${market.symbol}`;
+    const who = document.createElement("span");
+    who.className = "t-who muted";
+    who.textContent = `${t.account.slice(0, 6)}…${t.account.slice(-4)} · ${timeAgo(t.ts)}`;
+    a.append(side, eth, tok, who);
+    box.appendChild(a);
+  }
+}
+window.addEventListener("resize", () => { if (!$("#tradeModal").hidden) renderChart(); });
 
 async function open(addr) {
   if (!pons()) return ui().toast("Pons V2 is still loading — try again in a second");
   if (!isAddress(addr)) return ui().toast("That doesn't look like a token address");
   const token = getAddress(addr);
+  clearInterval(refreshTimer); // stop refreshing the previous token
   market = null;
   ["#tPrice", "#tMcap", "#tHold", "#tProg", "#tOut", "#tMin", "#tFees"].forEach((s) => ($(s).textContent = "—"));
   $("#tradeTitle").textContent = "Loading…";
@@ -186,6 +338,13 @@ async function open(addr) {
   $("#tLogo").textContent = "";
   setStatus("");
   setSide("buy");
+  tradeData = null;
+  $("#tSvg").innerHTML = "";
+  $("#tChartMsg").hidden = false;
+  $("#tChartMsg").textContent = "Loading chart…";
+  $("#tTrades").innerHTML = "";
+  $("#tTradesCount").textContent = "";
+  $("#tTip").textContent = "";
   ui().openModal("tradeModal");
   try {
     await load(token);
@@ -197,7 +356,7 @@ async function open(addr) {
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
     if ($("#tradeModal").hidden) return clearInterval(refreshTimer);
-    if (!busy) load(market.token).catch(() => {});
+    if (!busy && market) load(market.token).catch(() => {});
   }, 10000);
 }
 
