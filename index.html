@@ -145,11 +145,11 @@
     <section class="section container" id="explore">
       <div class="section-head">
         <span class="eyebrow"><i></i>Explore</span>
-        <p>Live from Robinhood Chain. Tap a token to buy or sell.</p>
+        <p>Tokens launched on BLER, live from Robinhood Chain. Tap one to buy or sell.</p>
       </div>
       <div class="tabs" role="tablist">
-        <button type="button" class="tab active" data-ex="latest" role="tab">🔥 Latest</button>
-        <button type="button" class="tab" data-ex="mine" role="tab">👤 Your tokens</button>
+        <button type="button" class="tab active" data-ex="all" role="tab">🔥 All BLER tokens</button>
+        <button type="button" class="tab" data-ex="mine" role="tab">👤 Yours</button>
       </div>
       <form class="lookup" id="lookupForm">
         <input name="addr" placeholder="Paste a token address (0x…)" autocomplete="off" autocapitalize="off" spellcheck="false" />
@@ -162,6 +162,7 @@
         <p id="emptyText">Be the first to launch your X or fomo profile.</p>
         <button class="btn btn-light btn-sm" id="emptyBtn" data-open-launch>Launch your profile</button>
       </div>
+      <div class="ex-more"><button type="button" class="btn btn-dark btn-sm" id="exMore" hidden>Load older</button></div>
       <p class="muted small ex-note" id="exNote"></p>
     </section>
 

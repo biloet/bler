@@ -401,6 +401,8 @@ async function describeLaunches(c, logs) {
       native: l.args.pairToken === zeroAddress,
       name: r[0] ?? "Unknown", symbol: r[1] ?? "?", logo: ipfsToHttp(info?.[1] || ""), description: desc,
       twitter: info?.[3]?.twitter || "",
+      handle: (desc.match(/@([A-Za-z0-9_.]{1,30})/) || [])[1] || "",
+      platform: /\bon fomo\b/i.test(desc) ? "fomo" : "x",
       bler: /launched on BLER/i.test(desc),
       graduated: !!r[5],
       progress: r[3] != null && r[4] ? Math.min(1, Number((r[3] * 10000n) / r[4]) / 10000) : null,
@@ -431,6 +433,29 @@ export async function fetchByDeployer(deployer, { chunks = 10, limit = 60 } = {}
   return describeLaunches(c, logs.slice(0, limit));
 }
 
+/** Live curve state for a list of tokens: Map(token -> { progress, graduated }). */
+export async function fetchCurveStats(items) {
+  const out = new Map();
+  if (!items.length) return out;
+  const c = readClient();
+  const res = await c.multicall({
+    contracts: items.flatMap((t) => [
+      { address: t.curve, abi: curveAbi, functionName: "realQuoteReserve" },
+      { address: t.curve, abi: curveAbi, functionName: "graduationThreshold" },
+      { address: t.curve, abi: curveAbi, functionName: "graduated" },
+    ]),
+    allowFailure: true,
+  });
+  items.forEach((t, i) => {
+    const [real, thr, grad] = res.slice(i * 3, i * 3 + 3).map((x) => (x.status === "success" ? x.result : null));
+    out.set(t.token, {
+      graduated: !!grad,
+      progress: real != null && thr ? Math.min(1, Number((real * 10000n) / thr) / 10000) : null,
+    });
+  });
+  return out;
+}
+
 /** Resolve a launch tx hash: { status: "pending" | "failed" | "live", token? }. */
 export async function checkLaunchTx(hash) {
   const c = readClient();
@@ -441,5 +466,5 @@ export async function checkLaunchTx(hash) {
   return log ? { status: "live", token: log.args.token, curve: log.args.curve } : { status: "failed" };
 }
 
-window.blerPons = { readStatus, launchToken, fetchLatest, fetchByDeployer, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
+window.blerPons = { readStatus, launchToken, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));

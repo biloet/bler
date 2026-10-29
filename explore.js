@@ -1,19 +1,29 @@
-// Explore: Pons V2 launches read from Robinhood Chain.
-//  - Latest: newest launches on the factory (everyone sees these)
-//  - Your tokens: everything the connected wallet deployed, plus launches sent
-//    from this browser that are still confirming
+// Explore: only tokens launched on BLER.
+//  - All BLER tokens: from /api/bler, which indexes Pons V2 launches carrying
+//    the BLER marker in fixed block windows (finished windows are CDN-cached)
+//  - Yours: tokens the connected wallet deployed on Pons V2, BLER ones only
+// Launches sent from this browser show up as "confirming" until they land.
 const $ = (s) => document.querySelector(s);
 const pons = () => window.blerPons;
 const LAUNCH_KEY = "bler-launches";
+const PAGE_TARGET = 24; // keep loading older windows until we have this many
 
-let tab = "latest";
+let tab = "all";
 let highlight = null;
 let loading = false;
-const cache = { latest: null, mine: null, mineFor: null };
+const state = {
+  all: [], // BLER tokens from the index, newest first
+  nextWindow: null, // next (older) window to load; -1 when exhausted
+  mine: null,
+  mineFor: null,
+  stats: new Map(), // token -> { progress, graduated }
+  error: false,
+};
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const GRADS = [["#ff8a00", "#e52e71"], ["#00c6ff", "#0072ff"], ["#7f00ff", "#e100ff"], ["#11998e", "#38ef7d"], ["#f7971e", "#ffd200"], ["#fc466b", "#3f5efb"]];
 const timeAgo = (t) => {
+  if (!t) return "";
   const s = Math.max(1, Math.round((Date.now() - t) / 1000));
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -24,27 +34,30 @@ const localLaunches = () => {
   try { return (JSON.parse(localStorage.getItem(LAUNCH_KEY)) || []).filter((t) => t.hash); } catch { return []; }
 };
 const saveLocal = (list) => { try { localStorage.setItem(LAUNCH_KEY, JSON.stringify(list)); } catch {} };
+const sameAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
 function card(t) {
   const g = GRADS[(t.symbol || "?").length % GRADS.length];
   const initial = esc((t.symbol || "?")[0]?.toUpperCase());
-  const avatar = t.logo
-    ? `<div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})"><img src="${esc(t.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">${initial}</div>`
-    : `<div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${initial}</div>`;
-  const badge = t.status === "pending"
-    ? '<span class="status-draft">Confirming</span>'
-    : t.bler ? '<span class="status-live">BLER</span>' : "";
-  const prog = t.status === "pending" ? "" : t.graduated ? "Graduated" : t.progress != null ? `Curve ${(t.progress * 100).toFixed(1)}%` : "";
-  const progBar = t.progress != null && !t.graduated && t.status !== "pending"
-    ? `<div class="mini-bar"><i style="width:${Math.max(2, t.progress * 100).toFixed(1)}%"></i></div>` : "";
+  const logo = t.logo ? pons()?.ipfsToHttp(t.logo) || "" : "";
+  const img = logo ? `<img src="${esc(logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
+  const st = state.stats.get(t.token) || t;
+  const pending = t.status === "pending";
+  const badge = pending ? '<span class="status-draft">Confirming</span>' : "";
+  const src = t.handle
+    ? `<span class="src src-${t.platform === "fomo" ? "fomo" : "x"}">${t.platform === "fomo" ? "fomo" : "𝕏"}</span> @${esc(t.handle)}`
+    : esc(t.name);
+  const prog = pending ? "" : st.graduated ? "Graduated" : st.progress != null ? `Curve ${(st.progress * 100).toFixed(1)}%` : "";
+  const bar = !pending && st.progress != null && !st.graduated
+    ? `<div class="mini-bar"><i style="width:${Math.max(2, st.progress * 100).toFixed(1)}%"></i></div>` : "";
   const key = t.token || t.hash;
   return `
     <div class="p-card card${key && key === highlight ? " just-launched" : ""}" data-token="${esc(t.token || "")}" data-hash="${esc(t.hash || "")}">
-      ${avatar}
+      <div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${img}${initial}</div>
       <div class="p-info">
         <div class="p-name">$${esc(t.symbol)} ${badge}</div>
-        <div class="p-handle">${esc(t.name)}</div>
-        ${progBar}
+        <div class="p-handle">${src}</div>
+        ${bar}
       </div>
       <div class="p-right">
         <div class="p-time">${timeAgo(t.createdAt)}</div>
@@ -66,35 +79,86 @@ function showEmpty(kind) {
     btn.onclick = action;
   };
   const openLaunch = () => document.querySelector("[data-open-launch]")?.click();
-  if (kind === "connect") set("👛", "Connect your wallet", "See every token your wallet launched on Pons V2 — from any browser.", "Connect wallet", () => document.querySelector("[data-open-wallet]")?.click());
-  else if (kind === "mine") set("🚀", "No tokens from this wallet yet", "Launch your X or fomo profile — it shows up here as soon as it confirms.", "Launch your profile", openLaunch);
+  if (kind === "connect") set("👛", "Connect your wallet", "See every token you launched on BLER — from any browser.", "Connect wallet", () => document.querySelector("[data-open-wallet]")?.click());
+  else if (kind === "mine") set("🚀", "You haven't launched on BLER yet", "Launch your X or fomo profile — it shows up here as soon as it confirms.", "Launch your profile", openLaunch);
   else if (kind === "error") set("⏳", "Robinhood Chain is busy", "We couldn't load tokens just now. Retrying automatically…", "Retry now", () => refresh(true));
-  else set("🚀", "No launches in the last few hours", "Be the first — launch your profile.", "Launch your profile", openLaunch);
+  else set("🚀", "No BLER tokens yet", "Be the first to launch your X or fomo profile.", "Launch your profile", openLaunch);
+}
+
+// Launches from this browser the index hasn't picked up yet (pending, or
+// confirmed in the last few seconds before the CDN cache refreshes).
+function pendingFor(list, addr) {
+  const known = new Set(list.flatMap((t) => [t.hash, t.token]).filter(Boolean));
+  return localLaunches().filter((t) =>
+    (t.status === "pending" || t.status === "live") &&
+    !known.has(t.hash) && !(t.token && known.has(t.token)) &&
+    (!addr || sameAddr(t.deployer, addr)));
 }
 
 function render() {
-  const grid = $("#launches");
   const w = window.blerWallet;
-  let list = [];
-  if (tab === "latest") {
-    list = cache.latest || [];
+  let list;
+  if (tab === "all") {
+    list = [...pendingFor(state.all), ...state.all];
   } else {
-    const chain = cache.mineFor && cache.mineFor === w?.address ? cache.mine || [] : [];
-    const known = new Set(chain.map((t) => t.hash));
-    const pending = localLaunches().filter((t) => t.status === "pending" && !known.has(t.hash) &&
-      (!w?.address || t.deployer?.toLowerCase() === w.address.toLowerCase()));
-    list = [...pending, ...chain];
+    const chain = state.mineFor && sameAddr(state.mineFor, w?.address) ? state.mine || [] : [];
+    list = w?.address ? [...pendingFor(chain, w.address), ...chain] : [];
   }
-  grid.innerHTML = list.map(card).join("");
+  const grid = $("#launches");
   if (loading && !list.length) {
     grid.innerHTML = Array.from({ length: 3 }, () => '<div class="p-card card skeleton"></div>').join("");
     showEmpty(null);
-  } else if (tab === "mine" && !w?.address && !list.length) showEmpty("connect");
-  else if (!list.length) showEmpty(cache.error ? "error" : tab === "mine" ? "mine" : "latest");
-  else showEmpty(null);
-  $("#exNote").textContent = tab === "latest"
-    ? "Showing the newest launches on the Pons V2 factory across all launchpads. Tokens launched on BLER carry the BLER badge."
-    : w?.address ? `Tokens deployed by ${w.address.slice(0, 6)}…${w.address.slice(-4)} on Pons V2 (last ~3 months).` : "";
+  } else {
+    grid.innerHTML = list.map(card).join("");
+    if (tab === "mine" && !w?.address) showEmpty("connect");
+    else if (!list.length) showEmpty(state.error ? "error" : tab);
+    else showEmpty(null);
+  }
+  const more = $("#exMore");
+  more.hidden = !(tab === "all" && state.nextWindow != null && state.nextWindow >= 0 && list.length);
+  more.disabled = loading;
+  more.textContent = loading ? "Loading…" : "Load older";
+  $("#exNote").textContent = tab === "mine" && w?.address
+    ? `BLER tokens deployed by ${w.address.slice(0, 6)}…${w.address.slice(-4)}.`
+    : "";
+}
+
+async function fetchWindow(w) {
+  const url = w == null ? "/api/bler" : `/api/bler?w=${w}`;
+  const r = await fetch(url, { headers: { accept: "application/json" } });
+  if (!r.ok) throw new Error(`index ${r.status}`);
+  return r.json();
+}
+
+// Load windows newest → oldest until we have PAGE_TARGET more tokens or run out.
+async function loadAll({ reset = false } = {}) {
+  let collected = [];
+  let next;
+  if (reset || state.nextWindow == null) {
+    const first = await fetchWindow(null);
+    collected = first.tokens;
+    next = first.window - 1;
+  } else {
+    next = state.nextWindow;
+  }
+  while (next >= 0 && collected.length < PAGE_TARGET) {
+    const page = await fetchWindow(next);
+    collected = collected.concat(page.tokens);
+    next -= 1;
+  }
+  const merged = reset || state.nextWindow == null ? collected : state.all.concat(collected);
+  const seen = new Set();
+  state.all = merged.filter((t) => (seen.has(t.token) ? false : (seen.add(t.token), true)));
+  state.nextWindow = next;
+}
+
+async function refreshStats(list) {
+  const want = list.filter((t) => t.token && t.curve);
+  if (!want.length) return;
+  try {
+    const stats = await pons().fetchCurveStats(want);
+    stats.forEach((v, k) => state.stats.set(k, v));
+  } catch {}
 }
 
 async function resolvePending() {
@@ -114,23 +178,25 @@ async function refresh(force = false) {
   if (!pons()) return;
   const w = window.blerWallet;
   loading = true;
-  cache.error = false;
+  state.error = false;
   render();
   try {
-    if (tab === "latest") {
-      if (force || !cache.latest) cache.latest = await pons().fetchLatest();
+    const changed = await resolvePending();
+    if (tab === "all") {
+      if (force || changed || state.nextWindow == null) await loadAll({ reset: true });
+      await refreshStats(state.all);
     } else if (w?.address) {
-      const changed = await resolvePending();
-      if (force || changed || cache.mineFor !== w.address) {
-        cache.mine = await pons().fetchByDeployer(w.address);
-        cache.mineFor = w.address;
+      if (force || changed || !sameAddr(state.mineFor, w.address)) {
+        const mine = await pons().fetchByDeployer(w.address);
+        state.mine = mine.filter((t) => t.bler);
+        state.mineFor = w.address;
       }
+      await refreshStats(state.mine || []);
     }
     refresh.retries = 0;
   } catch (err) {
     console.warn("Explore load failed", err);
-    cache.error = true;
-    // back off and retry a few times (rate limits clear within seconds)
+    state.error = true;
     refresh.retries = (refresh.retries || 0) + 1;
     if (refresh.retries <= 4) setTimeout(() => refresh(true), 2000 * refresh.retries);
   } finally {
@@ -147,6 +213,21 @@ function setTab(next) {
 
 document.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.ex)));
 
+$("#exMore").addEventListener("click", async () => {
+  if (loading) return;
+  loading = true;
+  render();
+  try {
+    await loadAll();
+    await refreshStats(state.all);
+  } catch {
+    window.blerUI?.toast("Couldn't load older tokens — try again");
+  } finally {
+    loading = false;
+    render();
+  }
+});
+
 $("#launches").addEventListener("click", (e) => {
   const el = e.target.closest(".p-card");
   if (!el || el.classList.contains("skeleton")) return;
@@ -157,14 +238,13 @@ $("#launches").addEventListener("click", (e) => {
   }
 });
 
-// A launch from this browser: jump to "Your tokens" and highlight it
+// A launch from this browser: show it right away and highlight it
 window.addEventListener("bler:launched", (e) => {
   highlight = e.detail.token || e.detail.hash;
-  cache.mineFor = null; // force reload from chain
-  setTab("mine");
-  if (e.detail.status === "pending") return;
-  // the RPC may lag a block behind the receipt; retry once shortly after
-  setTimeout(() => refresh(true), 2500);
+  state.mineFor = null;
+  render();
+  // the index may lag a few seconds behind the receipt; reload shortly after
+  setTimeout(() => refresh(true), 3000);
 });
 
 let lastAddr = null;
@@ -177,8 +257,7 @@ window.addEventListener("bler:wallet", () => {
 
 function start() {
   refresh();
-  // keep it fresh while the page is open
-  setInterval(() => { if (!document.hidden) refresh(true); }, 30000);
+  setInterval(() => { if (!document.hidden && !loading) refresh(true); }, 30000);
 }
 if (window.blerPons) start();
 else window.addEventListener("bler:pons-ready", start, { once: true });

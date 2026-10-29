@@ -5,10 +5,12 @@ Static site (HTML/CSS/JS, no build step).
 
 ## Run locally
 
-Serve the folder over HTTP (ES modules don't load from `file://`):
+The page is static, but Explore and the RPC proxy are Vercel functions in
+`api/` (they need `npm install` for viem). The simplest way to run everything:
 
 ```bash
-npx serve .
+npm install
+npx vercel dev
 ```
 
 ## Structure
@@ -19,7 +21,8 @@ npx serve .
 - `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
 - `trade.js` — Buy/Sell panel (opened from Explore or by pasting a token address)
 - `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
-- `explore.js` — Explore read from chain: latest Pons V2 launches + tokens deployed by the connected wallet
+- `api/bler.js` — Vercel function indexing BLER launches per 500k-block window (finished windows CDN-cached for a year)
+- `explore.js` — Explore: BLER tokens only (all, or the connected wallet's)
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
 
@@ -43,10 +46,14 @@ curve's constant-product math minus curve + creator fees; every trade is
 simulated before signing. Selling approves the exact amount first if needed.
 Verified against mainnet with the SwapMeet ($MEET) curve.
 
-Explore reads `TokenLaunched` logs from the factory and batches token/curve
-reads through Multicall3. Reads go through `/api/rpc` first: the public RPC
-answers rate-limited requests (HTTP 429) with a duplicated CORS header
-(`*,*`) that browsers reject, so the same-origin proxy avoids CORS and retries
-429s server-side. Fallbacks: public RPC directly, then the connected wallet. Launches sent from this
-browser are saved by tx hash as "confirming" until the receipt is found, so a
-launch is never lost if the page closes mid-way.
+Explore shows only tokens launched on BLER. BLER writes a marker into the
+token's on-chain description ("@handle on X — launched on BLER");
+`/api/bler` scans `TokenLaunched` logs in fixed block windows starting at block
+101,000,000, reads descriptions through Multicall3 and returns the BLER ones.
+Finished windows never change and are cached by the CDN; only the newest
+window is refreshed (~20 s). Curve progress is read live in the browser.
+
+Browser reads go through `/api/rpc` first: the public RPC answers rate-limited
+requests (HTTP 429) with a duplicated CORS header (`*,*`) that browsers
+reject, so the same-origin proxy avoids CORS and retries 429s server-side.
+Fallbacks: public RPC directly, then the connected wallet.

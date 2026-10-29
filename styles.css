@@ -760,3 +760,5 @@ h1, h2, h3 { text-wrap: balance; }
 .skeleton { height: 78px; background: linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.07), rgba(255,255,255,.03)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .ex-note { text-align: center; margin-top: 16px; }
+.ex-more { display: flex; justify-content: center; margin-top: 16px; }
+.ex-more:has(button[hidden]) { display: none; }
