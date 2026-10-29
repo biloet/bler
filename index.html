@@ -319,18 +319,36 @@
       <form id="launchForm" class="form">
         <label>Platform
           <select name="platform">
-            <option>X</option>
-            <option>fomo</option>
+            <option value="x">X</option>
+            <option value="fomo">fomo</option>
           </select>
         </label>
         <label>Username
-          <input type="text" name="handle" placeholder="@yourname" required />
+          <input type="text" name="handle" placeholder="@yourname" autocomplete="off" autocapitalize="off" required />
         </label>
-        <label>Ticker
-          <input type="text" name="ticker" placeholder="$YOU" maxlength="10" required />
+        <div class="form-row">
+          <label>Token name
+            <input type="text" name="name" placeholder="Your Name" maxlength="32" />
+          </label>
+          <label>Ticker
+            <input type="text" name="ticker" placeholder="YOU" maxlength="10" autocapitalize="characters" required />
+          </label>
+        </div>
+        <label>Creator fee (you earn this on every trade)
+          <select name="creatorTax">
+            <option value="0">0%</option>
+            <option value="50">0.5%</option>
+            <option value="100" selected>1%</option>
+            <option value="200">2%</option>
+          </select>
         </label>
-        <p class="net-note"><span class="live-dot"></span>Robinhood Chain · Pons V2 · priced in ETH</p>
-        <button type="submit" class="btn btn-light btn-lg full">Launch</button>
+        <div class="launch-info">
+          <div><span class="live-dot"></span>Robinhood Chain · Pons V2 · ETH curve</div>
+          <div>Launch fee: <b id="launchFee">connect wallet</b></div>
+        </div>
+        <p class="launch-status" id="launchStatus" hidden></p>
+        <button type="submit" class="btn btn-light btn-lg full" id="launchBtn">Launch on Pons V2</button>
+        <p class="muted small">Launching sends a real transaction and costs real ETH. Tokens are high-risk.</p>
       </form>
     </div>
   </div>
@@ -338,5 +356,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
+  <script type="module" src="pons.js"></script>
 </body>
 </html>

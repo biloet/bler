@@ -63,7 +63,7 @@
         <div class="p-card card${t.id === highlightId ? " just-launched" : ""}" data-id="${esc(t.id)}">
           <div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${esc(t.handle[0].toUpperCase())}</div>
           <div class="p-info">
-            <div class="p-name">${esc(t.ticker)} <span class="status-draft">Draft</span></div>
+            <div class="p-name">${esc(t.ticker)} ${t.status === "live" ? '<span class="status-live">Live</span>' : '<span class="status-draft">Draft</span>'}</div>
             <div class="p-handle"><span class="src src-${t.platform === "fomo" ? "fomo" : "x"}">${t.platform === "fomo" ? "fomo" : "𝕏"}</span> @${esc(t.handle)}</div>
           </div>
           <div class="p-right">
@@ -79,40 +79,93 @@
 
   $("#launches").addEventListener("click", (e) => {
     const card = e.target.closest(".p-card");
-    if (card) toast("Draft — goes on-chain once the Pons V2 launch is live");
+    if (!card) return;
+    const t = loadLaunches().find((x) => x.id === card.dataset.id);
+    if (t?.status === "live" && /^0x[0-9a-fA-F]{40}$/.test(t.token)) {
+      window.open(`https://robinhoodchain.blockscout.com/token/${t.token}`, "_blank", "noopener");
+    } else {
+      toast("Draft — this one was saved before on-chain launching was live");
+    }
   });
 
-  $("#launchForm").addEventListener("submit", (e) => {
+  // Live launch info (fee / permission) from the Pons V2 factory
+  async function refreshLaunchInfo() {
+    const w = window.blerWallet, el = $("#launchFee");
+    if (!w?.address) return (el.textContent = "connect wallet");
+    if (w.chainId !== 4663) return (el.textContent = "switch to Robinhood Chain");
+    if (!window.blerPons) return (el.textContent = "loading…");
+    el.textContent = "checking…";
+    try {
+      const st = await window.blerPons.readStatus(w.provider, w.address);
+      el.textContent = `${st.launchFeeEth} ETH` + (st.canLaunch && st.launchEnabled ? "" : " · not open for this wallet");
+    } catch (err) {
+      el.textContent = "unavailable";
+    }
+  }
+  $$("[data-open-launch]").forEach((b) => b.addEventListener("click", refreshLaunchInfo));
+  window.addEventListener("bler:wallet", () => { if (!$("#launchModal").hidden) refreshLaunchInfo(); });
+  window.addEventListener("bler:pons-ready", () => { if (!$("#launchModal").hidden) refreshLaunchInfo(); });
+
+  const setStatus = (text, kind = "") => {
+    const el = $("#launchStatus");
+    el.hidden = !text;
+    el.textContent = text || "";
+    el.className = "launch-status " + kind;
+  };
+
+  let launching = false;
+  $("#launchForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!window.blerWallet?.address) {
+    if (launching) return;
+    const w = window.blerWallet;
+    if (!w?.address) {
       closeModals();
       openModal("walletModal");
       toast("Connect your wallet first, then launch");
       return;
     }
+    if (!window.blerPons) return toast("Pons V2 is still loading — try again in a second");
+
     const data = new FormData(e.target);
     const handle = String(data.get("handle")).trim().replace(/^@+/, "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 30);
-    let ticker = String(data.get("ticker")).trim().toUpperCase().replace(/[^A-Z0-9$]/g, "");
-    ticker = "$" + ticker.replace(/\$/g, "");
-    if (!handle || ticker.length < 2) return toast("Enter a username and ticker");
-    const list = loadLaunches();
-    if (list.some((t) => t.ticker === ticker)) return toast(`${ticker} already exists in Explore`);
-    const token = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      handle,
-      ticker,
-      platform: data.get("platform") === "fomo" ? "fomo" : "x",
-      creator: window.blerWallet.address,
-      createdAt: Date.now(),
-      status: "draft",
-    };
-    list.push(token);
-    if (!saveLaunches(list)) return toast("Could not save — browser storage is blocked");
-    closeModals();
-    e.target.reset();
-    renderLaunches(token.id);
-    document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
-    toast(`${ticker} added to Explore 🚀`);
+    const symbol = String(data.get("ticker")).trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+    const name = String(data.get("name") || "").trim().slice(0, 32) || handle;
+    const platform = data.get("platform") === "fomo" ? "fomo" : "x";
+    const creatorTaxBps = Number(data.get("creatorTax")) || 0;
+    if (!handle || symbol.length < 2) return setStatus("Enter a username and a ticker (2–10 letters/numbers).", "err");
+
+    const btn = $("#launchBtn");
+    launching = true;
+    btn.disabled = true;
+    try {
+      if (w.chainId !== 4663) {
+        setStatus("Switching to Robinhood Chain…");
+        await w.ensureChain();
+      }
+      const res = await window.blerPons.launchToken({
+        provider: w.provider, account: w.address, name, symbol, handle, platform, creatorTaxBps,
+        onStep: (t) => setStatus(t),
+      });
+      const list = loadLaunches();
+      const token = {
+        id: res.token, handle, name, ticker: "$" + symbol, platform,
+        creator: w.address, createdAt: Date.now(), status: "live",
+        token: res.token, curve: res.curve, hash: res.hash,
+      };
+      list.push(token);
+      saveLaunches(list);
+      setStatus("");
+      closeModals();
+      e.target.reset();
+      renderLaunches(token.id);
+      document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
+      toast(`$${symbol} is live on Pons V2 🚀`);
+    } catch (err) {
+      setStatus(err?.message || "Launch failed", "err");
+    } finally {
+      launching = false;
+      btn.disabled = false;
+    }
   });
 
   $$(".btn-buy, .btn-sell").forEach((b) =>
@@ -401,6 +454,7 @@
   }
 
   const state = (window.blerWallet = { provider: null, address: null, chainId: null, kind: null });
+  state.ensureChain = () => ensureChain();
   const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
 
   function formatEth(hexWei) {
@@ -421,6 +475,7 @@
   }
 
   function render() {
+    window.dispatchEvent(new Event("bler:wallet"));
     const connected = !!state.address;
     const onChain = state.chainId === CHAIN_ID;
     document.querySelectorAll("[data-open-wallet]").forEach((b) => {
