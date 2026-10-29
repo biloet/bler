@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BLER — Your profile. Now a market.</title>
+  <meta name="description" content="Tokenize your profile and trade it on a bonding curve. Built for speed. Non-custodial by design." />
+  <meta name="theme-color" content="#0b0b0d" />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="#" class="brand" aria-label="BLER home">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="40" height="40" />
+        <span class="brand-name">BLER</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="#explore">Explore</a>
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <button class="btn btn-light btn-sm" data-open-wallet>Connect wallet</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero container" id="home">
+      <a href="#explore" class="pill">
+        <span class="pill-icons">
+          <span class="chain chain-a">◆</span>
+          <span class="chain chain-b">≡</span>
+        </span>
+        <span>Now live on Base &amp; Solana</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+
+      <h1 class="hero-title">
+        Your profile.<br />
+        Now a market.
+      </h1>
+
+      <p class="hero-sub">
+        Tokenize your <span class="hl">@X</span> &amp; <span class="hl">@Farcaster</span> profile and
+        trade it on a bonding curve. Built for speed. Non-custodial by design.
+      </p>
+
+      <div class="hero-ctas">
+        <button class="btn btn-light btn-lg" data-open-launch>Launch your profile</button>
+        <a href="#explore" class="btn btn-dark btn-lg">
+          Explore profiles
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- Browser mockup -->
+      <div class="mockup" role="img" aria-label="Preview of a BLER profile market">
+        <div class="mockup-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <span class="mockup-url">bler.app/you</span>
+        </div>
+        <div class="mockup-body">
+          <div class="profile-row">
+            <div class="avatar avatar-grad">Y</div>
+            <div class="profile-meta">
+              <div class="profile-name">You <span class="ticker">$YOU</span> <span class="tag">Preview</span></div>
+              <div class="profile-sub">Market cap</div>
+            </div>
+            <div class="profile-price">
+              <div class="mcap" id="mcap">$84,219</div>
+              <div class="change up" id="change">+12.4%</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap">
+            <svg class="chart" id="chart" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#3ee08f" stop-opacity=".35" />
+                  <stop offset="100%" stop-color="#3ee08f" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path id="chartArea" fill="url(#chartFill)" d="" />
+              <path id="chartLine" fill="none" stroke="#3ee08f" stroke-width="2.5" stroke-linejoin="round" d="" />
+            </svg>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>Holders</span><strong>1,284</strong></div>
+            <div class="stat"><span>24h Vol</span><strong>$12.9K</strong></div>
+            <div class="stat"><span>Curve</span><strong>63%</strong></div>
+          </div>
+
+          <div class="curve">
+            <div class="curve-head"><span>Bonding curve progress</span><span>63%</span></div>
+            <div class="curve-bar"><div class="curve-fill" style="width:63%"></div></div>
+          </div>
+
+          <div class="trade">
+            <button class="btn btn-buy">Buy</button>
+            <button class="btn btn-sell">Sell</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ticker strip -->
+    <section class="marquee" aria-label="Live trades">
+      <div class="marquee-track" id="marquee"></div>
+    </section>
+
+    <!-- Explore -->
+    <section class="section container" id="explore">
+      <div class="section-head">
+        <span class="eyebrow">Trending</span>
+        <h2>Explore profiles</h2>
+        <p>The hottest creator markets right now.</p>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-sort="trending" role="tab">🔥 Trending</button>
+        <button class="tab" data-sort="new" role="tab">✨ New</button>
+        <button class="tab" data-sort="mcap" role="tab">💎 Top mcap</button>
+      </div>
+      <div class="grid" id="profiles"></div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section container" id="how">
+      <div class="section-head">
+        <span class="eyebrow">How it works</span>
+        <h2>Three steps. Zero friction.</h2>
+      </div>
+      <div class="steps">
+        <div class="step card">
+          <div class="step-num">01</div>
+          <h3>Connect</h3>
+          <p>Link your wallet and verify your social handle in seconds.</p>
+        </div>
+        <div class="step card">
+          <div class="step-num">02</div>
+          <h3>Launch</h3>
+          <p>Your profile becomes a token on a fair bonding curve. No presale, no team allocation.</p>
+        </div>
+        <div class="step card">
+          <div class="step-num">03</div>
+          <h3>Trade &amp; earn</h3>
+          <p>Fans buy in, price goes up. You earn creator fees on every trade.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section container" id="features">
+      <div class="section-head">
+        <span class="eyebrow">Why BLER</span>
+        <h2>Built for speed.<br />Non-custodial by design.</h2>
+      </div>
+      <div class="features">
+        <div class="feature card">
+          <div class="f-icon">⚡</div>
+          <h3>Instant trades</h3>
+          <p>Sub-second execution on fast chains. No order books, no waiting.</p>
+        </div>
+        <div class="feature card">
+          <div class="f-icon">🔒</div>
+          <h3>Your keys, your coins</h3>
+          <p>We never hold your funds. Everything settles directly on-chain.</p>
+        </div>
+        <div class="feature card">
+          <div class="f-icon">📈</div>
+          <h3>Bonding curve</h3>
+          <p>Transparent, math-driven pricing. Price rises with every buy.</p>
+        </div>
+        <div class="feature card">
+          <div class="f-icon">💸</div>
+          <h3>Creator fees</h3>
+          <p>Earn a share of every trade on your profile, forever.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section container narrow" id="faq">
+      <div class="section-head">
+        <span class="eyebrow">FAQ</span>
+        <h2>Questions?</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>What is BLER?</summary>
+          <p>BLER turns your social profile into a tradable market. Anyone can buy and sell your profile token on a bonding curve.</p>
+        </details>
+        <details>
+          <summary>Is it non-custodial?</summary>
+          <p>Yes. You trade directly from your own wallet. BLER never takes custody of your assets.</p>
+        </details>
+        <details>
+          <summary>What is a bonding curve?</summary>
+          <p>A pricing formula where the token price increases as supply is bought, and decreases as it is sold — always liquid, always transparent.</p>
+        </details>
+        <details>
+          <summary>How do I earn as a creator?</summary>
+          <p>Every trade on your profile pays a small creator fee straight to your wallet.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section container">
+      <div class="cta card">
+        <h2>Ready to become a market?</h2>
+        <p>Launch your profile in under a minute.</p>
+        <button class="btn btn-light btn-lg" data-open-launch>Launch your profile</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer container">
+    <div class="brand">
+      <img src="assets/logo.svg" alt="" class="brand-logo" width="32" height="32" />
+      <span class="brand-name">BLER</span>
+    </div>
+    <p class="muted">© <span id="year"></span> BLER. Trading involves risk. Not financial advice.</p>
+  </footer>
+
+  <!-- Bottom nav (mobile) -->
+  <nav class="bottom-nav" aria-label="Quick navigation">
+    <a href="#home" class="bn-item active" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>
+    </a>
+    <a href="#explore" class="bn-item" aria-label="Trending">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+    </a>
+    <button class="bn-center" data-open-launch aria-label="Launch">
+      <img src="assets/logo.svg" alt="" width="52" height="52" />
+    </button>
+    <a href="#how" class="bn-item" aria-label="Community">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M16 4.1a4 4 0 0 1 0 7.8"/><path d="M22 21c0-3-1.8-5.5-4.5-6.5"/></svg>
+    </a>
+    <button class="bn-item" data-open-launch aria-label="Create">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </nav>
+
+  <!-- Wallet modal -->
+  <div class="modal" id="walletModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="walletTitle">
+      <div class="modal-head">
+        <h3 id="walletTitle">Connect wallet</h3>
+        <button class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <div class="wallet-list">
+        <button class="wallet" data-wallet="Phantom"><span class="w-ico" style="background:#ab9ff2">👻</span>Phantom</button>
+        <button class="wallet" data-wallet="MetaMask"><span class="w-ico" style="background:#f6851b">🦊</span>MetaMask</button>
+        <button class="wallet" data-wallet="Coinbase Wallet"><span class="w-ico" style="background:#0052ff">◎</span>Coinbase Wallet</button>
+        <button class="wallet" data-wallet="WalletConnect"><span class="w-ico" style="background:#3b99fc">∿</span>WalletConnect</button>
+      </div>
+      <p class="muted small">Demo UI — no wallet is actually connected yet.</p>
+    </div>
+  </div>
+
+  <!-- Launch modal -->
+  <div class="modal" id="launchModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="launchTitle">
+      <div class="modal-head">
+        <h3 id="launchTitle">Launch your profile</h3>
+        <button class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <form id="launchForm" class="form">
+        <label>Social handle
+          <input type="text" name="handle" placeholder="@yourname" required />
+        </label>
+        <label>Ticker
+          <input type="text" name="ticker" placeholder="$YOU" maxlength="10" required />
+        </label>
+        <label>Chain
+          <select name="chain">
+            <option>Solana</option>
+            <option>Base</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-light btn-lg full">Launch</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
