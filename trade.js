@@ -46,7 +46,8 @@ function setStatus(text, kind = "") {
 function renderMarket() {
   const m = market;
   $("#tradeTitle").textContent = m.name;
-  $("#tSub").textContent = `$${m.symbol} · ${m.token.slice(0, 6)}…${m.token.slice(-4)}`;
+  $("#tSub").textContent = `$${m.symbol}`;
+  $("#tCaAddr").textContent = m.token;
   const logo = $("#tLogo");
   logo.textContent = "";
   logo.style.backgroundImage = "";
@@ -179,7 +180,9 @@ async function open(addr) {
   market = null;
   ["#tPrice", "#tMcap", "#tHold", "#tProg", "#tOut", "#tMin", "#tFees"].forEach((s) => ($(s).textContent = "—"));
   $("#tradeTitle").textContent = "Loading…";
-  $("#tSub").textContent = token;
+  $("#tSub").textContent = "";
+  $("#tCaAddr").textContent = token;
+  $("#tCaCopy").textContent = "Copy";
   $("#tLogo").textContent = "";
   setStatus("");
   setSide("buy");
@@ -197,6 +200,38 @@ async function open(addr) {
     if (!busy) load(market.token).catch(() => {});
   }, 10000);
 }
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // older in-app wallet browsers: fall back to a temporary textarea
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    return ok;
+  }
+}
+
+$("#tCa").addEventListener("click", async () => {
+  const addr = $("#tCaAddr").textContent;
+  if (!isAddress(addr)) return;
+  const ok = await copyText(addr);
+  const label = $("#tCaCopy");
+  label.textContent = ok ? "Copied ✓" : "Copy failed";
+  label.classList.toggle("done", ok);
+  ui().toast(ok ? "Contract address copied" : "Couldn't copy — long-press the address to copy it");
+  clearTimeout(label._t);
+  label._t = setTimeout(() => { label.textContent = "Copy"; label.classList.remove("done"); }, 2000);
+});
 
 $("#tAmt").addEventListener("input", renderQuote);
 $("#tSlip").addEventListener("change", renderQuote);
