@@ -95,7 +95,7 @@
 
       mcap = Math.max(1000, Math.round(mcap * (1 + (next - last) / 400)));
       $("#mcap").textContent = "$" + mcap.toLocaleString("en-US");
-      const pct = ((next - series[0]) / series[0]) * 100;
+      const pct = ((next - series[0]) / (series[0] + 50)) * 100;
       const ch = $("#change");
       ch.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
       ch.className = "change " + (pct >= 0 ? "up" : "down");
@@ -180,7 +180,7 @@
     const buy = i % 3 !== 1;
     const amt = (Math.random() * 2 + 0.05).toFixed(2);
     return `<span class="m-item"><span class="m-dot" style="background:linear-gradient(135deg,${p.colors[0]},${p.colors[1]})"></span>
-      <b>@${p.handle}</b> ${buy ? '<span class="up">bought</span>' : '<span class="down">sold</span>'} ${amt} SOL</span>`;
+      <b>@${p.handle}</b> ${buy ? '<span class="up">bought</span>' : '<span class="down">sold</span>'} ${amt} ${i % 2 ? "ETH" : "SOL"}</span>`;
   }).join("");
   $("#marquee").innerHTML = items + items;
 
