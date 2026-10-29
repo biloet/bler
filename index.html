@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>BLER — Your clout. Now a market.</title>
-  <meta name="description" content="Turn your clout into a market. Launch your profile as a token in 30 seconds and earn on every trade." />
+  <meta name="description" content="Turn your X or fomo profile into a market. Launch it as a token in 30 seconds and earn on every trade." />
   <meta name="theme-color" content="#0b0b0d" />
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -67,8 +67,8 @@
       </h1>
 
       <p class="hero-sub">
-        Every follower is a potential holder. Turn your <span class="hl">@X</span> or
-        <span class="hl">@Farcaster</span> profile into a token in <span class="hl">30 seconds</span>
+        Every follower is a potential holder. Turn your <span class="hl">@X</span> or <span class="hl">@fomo</span> profile
+        into a token in <span class="hl">30 seconds</span>
         — fans buy in, your price climbs, and <span class="hl hl-green">you earn on every trade</span>.
       </p>
 
@@ -173,7 +173,7 @@
         <div class="step card">
           <div class="step-num">01</div>
           <h3>Plug in</h3>
-          <p>Connect your wallet and verify your handle. No forms, no waiting room.</p>
+          <p>Connect your wallet and sign in with X or fomo. No forms, no waiting room.</p>
         </div>
         <div class="step card">
           <div class="step-num">02</div>
@@ -227,7 +227,7 @@
       <div class="faq">
         <details>
           <summary>What is BLER?</summary>
-          <p>BLER turns your social profile into a live market. Your fans can buy and sell your token anytime, and you earn from every trade.</p>
+          <p>BLER turns your X or fomo profile into a live market. Your fans can buy and sell your token anytime, and you earn from every trade.</p>
         </details>
         <details>
           <summary>Is it non-custodial?</summary>
@@ -308,7 +308,13 @@
         <button class="icon-btn" data-close aria-label="Close">✕</button>
       </div>
       <form id="launchForm" class="form">
-        <label>Social handle
+        <label>Platform
+          <select name="platform">
+            <option>X</option>
+            <option>fomo</option>
+          </select>
+        </label>
+        <label>Username
           <input type="text" name="handle" placeholder="@yourname" required />
         </label>
         <label>Ticker

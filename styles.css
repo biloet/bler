@@ -609,3 +609,7 @@ body { background: #050507; }
 
 h1, h2, h3 { text-wrap: balance; }
 .hero-sub, .section-head p, .cta p { text-wrap: pretty; }
+
+.src { display: inline-block; font-size: 10px; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 5px; margin-right: 3px; vertical-align: 1px; }
+.src-x { background: #fff; color: #000; }
+.src-fomo { background: linear-gradient(135deg, #ff8a00, #ff3d77); color: #fff; }

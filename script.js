@@ -118,7 +118,7 @@
     { name: "Budi Builds", handle: "budibuilds", mcap: 64520, change: 41.7, age: 0.5 },
     { name: "Pixel Putri", handle: "pixelputri", mcap: 51200, change: 5.4, age: 4 },
     { name: "Rizky Rekt", handle: "rizkyrekt", mcap: 33980, change: -11.6, age: 7 },
-  ].map((p, i) => ({ ...p, colors: COLORS[i % COLORS.length], spark: makeSpark(p.change) }));
+  ].map((p, i) => ({ ...p, platform: i % 3 === 1 ? "fomo" : "x", colors: COLORS[i % COLORS.length], spark: makeSpark(p.change) }));
 
   function makeSpark(change) {
     const pts = [];
@@ -147,7 +147,7 @@
           <div class="avatar" style="background:linear-gradient(135deg,${p.colors[0]},${p.colors[1]})">${p.name[0]}</div>
           <div class="p-info">
             <div class="p-name">${p.name}</div>
-            <div class="p-handle">@${p.handle} · $${p.handle.slice(0, 5).toUpperCase()}</div>
+            <div class="p-handle"><span class="src src-${p.platform}">${p.platform === "fomo" ? "fomo" : "𝕏"}</span> @${p.handle} · $${p.handle.slice(0, 5).toUpperCase()}</div>
           </div>
           <svg class="p-spark" viewBox="0 0 64 28" preserveAspectRatio="none">
             <polyline points="${pts}" fill="none" stroke="${up ? "#3ee08f" : "#ff5a5f"}" stroke-width="1.6" stroke-linejoin="round"/>
