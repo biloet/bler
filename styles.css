@@ -586,3 +586,8 @@ body { background: #050507; }
 }
 .hero-fx { position: absolute; top: 0; left: 0; right: 0; height: 1400px; overflow: hidden; z-index: -1; pointer-events: none; }
 .hero-fx .grid-floor { width: 160%; }
+
+/* Candles logo: dark tile, green glow instead of white */
+.brand-logo { box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 4px 24px rgba(62,224,143,.25); }
+.intro-inner img { box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 0 90px rgba(62,224,143,.45); }
+.bn-center img { box-shadow: 0 0 0 4px #1a1a1f, 0 0 0 5px rgba(255,255,255,.1), 0 6px 28px rgba(62,224,143,.35); }
