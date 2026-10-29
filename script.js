@@ -102,90 +102,8 @@
     }, 1400);
   }
 
-  // ---------- Profiles ----------
-  const COLORS = [
-    ["#ff8a00", "#e52e71"], ["#00c6ff", "#0072ff"], ["#7f00ff", "#e100ff"],
-    ["#11998e", "#38ef7d"], ["#f7971e", "#ffd200"], ["#ee0979", "#ff6a00"],
-    ["#8e2de2", "#4a00e0"], ["#00b09b", "#96c93d"], ["#fc466b", "#3f5efb"],
-  ];
-  const PROFILES = [
-    { name: "Satoshi Vibes", handle: "satvibes", mcap: 412300, change: 34.2, age: 9 },
-    { name: "Degen Dina", handle: "degendina", mcap: 238910, change: 12.8, age: 3 },
-    { name: "Moon Marco", handle: "moonmarco", mcap: 189200, change: -4.1, age: 14 },
-    { name: "Alpha Ayu", handle: "alphaayu", mcap: 156780, change: 22.5, age: 1 },
-    { name: "Chart Chad", handle: "chartchad", mcap: 98340, change: 8.9, age: 6 },
-    { name: "Nina Onchain", handle: "ninaonchain", mcap: 77110, change: -2.3, age: 2 },
-    { name: "Budi Builds", handle: "budibuilds", mcap: 64520, change: 41.7, age: 0.5 },
-    { name: "Pixel Putri", handle: "pixelputri", mcap: 51200, change: 5.4, age: 4 },
-    { name: "Rizky Rekt", handle: "rizkyrekt", mcap: 33980, change: -11.6, age: 7 },
-  ].map((p, i) => ({ ...p, platform: i % 3 === 1 ? "fomo" : "x", colors: COLORS[i % COLORS.length], spark: makeSpark(p.change) }));
-
-  function makeSpark(change) {
-    const pts = [];
-    let y = 50;
-    for (let i = 0; i < 16; i++) {
-      y += (Math.random() - 0.5) * 18 - change / 20;
-      y = Math.max(4, Math.min(96, y));
-      pts.push(y);
-    }
-    return pts;
-  }
-
-  const fmtUsd = (n) =>
-    n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n}`;
-
-  function renderProfiles(sort = "trending") {
-    const list = [...PROFILES].sort((a, b) =>
-      sort === "new" ? a.age - b.age : sort === "mcap" ? b.mcap - a.mcap : b.change - a.change
-    );
-    $("#profiles").innerHTML = list
-      .map((p) => {
-        const up = p.change >= 0;
-        const pts = p.spark.map((y, i) => `${(i / 15) * 64},${(y / 100) * 28}`).join(" ");
-        return `
-        <div class="p-card card" data-handle="${p.handle}">
-          <div class="avatar" style="background:linear-gradient(135deg,${p.colors[0]},${p.colors[1]})">${p.name[0]}</div>
-          <div class="p-info">
-            <div class="p-name">${p.name}</div>
-            <div class="p-handle"><span class="src src-${p.platform}">${p.platform === "fomo" ? "fomo" : "𝕏"}</span> @${p.handle} · $${p.handle.slice(0, 5).toUpperCase()}</div>
-          </div>
-          <svg class="p-spark" viewBox="0 0 64 28" preserveAspectRatio="none">
-            <polyline points="${pts}" fill="none" stroke="${up ? "#3ee08f" : "#ff5a5f"}" stroke-width="1.6" stroke-linejoin="round"/>
-          </svg>
-          <div class="p-right">
-            <div class="p-mcap">${fmtUsd(p.mcap)}</div>
-            <div class="change ${up ? "up" : "down"}">${up ? "+" : ""}${p.change.toFixed(1)}%</div>
-          </div>
-        </div>`;
-      })
-      .join("");
-  }
-  renderProfiles();
-
-  $$(".tab").forEach((t) =>
-    t.addEventListener("click", () => {
-      $$(".tab").forEach((x) => x.classList.remove("active"));
-      t.classList.add("active");
-      renderProfiles(t.dataset.sort);
-    })
-  );
-
-  $("#profiles").addEventListener("click", (e) => {
-    const card = e.target.closest(".p-card");
-    if (card) toast(`Opening @${card.dataset.handle}…`);
-  });
-
-  // ---------- Marquee ----------
-  const items = PROFILES.map((p, i) => {
-    const buy = i % 3 !== 1;
-    const amt = (Math.random() * 2 + 0.05).toFixed(2);
-    return `<span class="m-item"><span class="m-dot" style="background:linear-gradient(135deg,${p.colors[0]},${p.colors[1]})"></span>
-      <b>@${p.handle}</b> ${buy ? '<span class="up">bought</span>' : '<span class="down">sold</span>'} ${amt} ${i % 2 ? "ETH" : "SOL"}</span>`;
-  }).join("");
-  $("#marquee").innerHTML = items + items;
-
   // ---------- Bottom nav active state ----------
-  const sections = ["home", "explore", "how"].map((id) => document.getElementById(id));
+  const sections = ["home", "features", "how"].map((id) => document.getElementById(id));
   const navItems = $$(".bottom-nav a.bn-item");
   const io = new IntersectionObserver(
     (entries) => {
@@ -201,7 +119,7 @@
   sections.forEach((s) => s && io.observe(s));
 
   // ---------- Reveal on scroll ----------
-  const revealEls = $$(".section-head, .num, .step, .feature, .faq details, .cta, .p-card");
+  const revealEls = $$(".section-head, .num, .step, .feature, .faq details, .cta");
   revealEls.forEach((el) => el.classList.add("reveal"));
   const ro = new IntersectionObserver(
     (entries) =>
