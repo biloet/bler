@@ -629,3 +629,15 @@ h1, h2, h3 { text-wrap: balance; }
 .toast { transform: translate(-50%, -20px); }
 .toast.show { transform: translate(-50%, 0); }
 .w-bitget { background: linear-gradient(135deg, #00f0ff, #1b6bff); font-weight: 800; font-size: 17px; }
+
+/* Explore launches */
+.empty { text-align: center; padding: 40px 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.empty-icon { font-size: 36px; margin-bottom: 6px; }
+.empty h3 { font-size: 20px; }
+.empty p { color: var(--muted); margin-bottom: 12px; }
+.status-draft { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #febc2e; border: 1px solid rgba(254,188,46,.35); background: rgba(254,188,46,.08); padding: 2px 6px; border-radius: 6px; vertical-align: 2px; margin-left: 4px; }
+.p-time { font-size: 13px; color: var(--muted); }
+.p-creator { font-family: var(--mono); font-size: 11px; color: #6e6e78; }
+.p-name { font-family: var(--mono); }
+.just-launched { animation: launchGlow 2.4s var(--ease-out); border-color: rgba(62,224,143,.6); }
+@keyframes launchGlow { 0% { box-shadow: 0 0 0 0 rgba(62,224,143,.0); transform: scale(.96); } 20% { box-shadow: 0 0 40px 4px rgba(62,224,143,.35); transform: scale(1.02); } 100% { box-shadow: none; transform: none; } }

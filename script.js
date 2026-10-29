@@ -32,14 +32,87 @@
   document.addEventListener("keydown", (e) => e.key === "Escape" && closeModals());
 
 
+  // ---------- Launches → Explore ----------
+  // Until the Pons V2 integration is live, launches are stored as drafts in
+  // this browser. Once launching is on-chain, this list should be read from chain.
+  const LAUNCH_KEY = "bler-launches";
+  const loadLaunches = () => {
+    try { return JSON.parse(localStorage.getItem(LAUNCH_KEY)) || []; } catch { return []; }
+  };
+  const saveLaunches = (list) => {
+    try { localStorage.setItem(LAUNCH_KEY, JSON.stringify(list)); return true; } catch { return false; }
+  };
+  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const GRADS = [["#ff8a00", "#e52e71"], ["#00c6ff", "#0072ff"], ["#7f00ff", "#e100ff"], ["#11998e", "#38ef7d"], ["#f7971e", "#ffd200"], ["#fc466b", "#3f5efb"]];
+  const timeAgo = (t) => {
+    const s = Math.max(1, Math.round((Date.now() - t) / 1000));
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  };
+
+  function renderLaunches(highlightId) {
+    const list = loadLaunches().sort((a, b) => b.createdAt - a.createdAt);
+    $("#launchesEmpty").hidden = list.length > 0;
+    $("#launches").innerHTML = list
+      .map((t) => {
+        const g = GRADS[t.handle.length % GRADS.length];
+        const creator = t.creator ? `${t.creator.slice(0, 6)}…${t.creator.slice(-4)}` : "";
+        return `
+        <div class="p-card card${t.id === highlightId ? " just-launched" : ""}" data-id="${esc(t.id)}">
+          <div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${esc(t.handle[0].toUpperCase())}</div>
+          <div class="p-info">
+            <div class="p-name">${esc(t.ticker)} <span class="status-draft">Draft</span></div>
+            <div class="p-handle"><span class="src src-${t.platform === "fomo" ? "fomo" : "x"}">${t.platform === "fomo" ? "fomo" : "𝕏"}</span> @${esc(t.handle)}</div>
+          </div>
+          <div class="p-right">
+            <div class="p-time">${timeAgo(t.createdAt)}</div>
+            <div class="p-creator">${esc(creator)}</div>
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+  renderLaunches();
+  setInterval(() => renderLaunches(), 30000);
+
+  $("#launches").addEventListener("click", (e) => {
+    const card = e.target.closest(".p-card");
+    if (card) toast("Draft — goes on-chain once the Pons V2 launch is live");
+  });
+
   $("#launchForm").addEventListener("submit", (e) => {
     e.preventDefault();
+    if (!window.blerWallet?.address) {
+      closeModals();
+      openModal("walletModal");
+      toast("Connect your wallet first, then launch");
+      return;
+    }
     const data = new FormData(e.target);
-    let ticker = String(data.get("ticker")).trim().toUpperCase();
-    if (!ticker.startsWith("$")) ticker = "$" + ticker;
+    const handle = String(data.get("handle")).trim().replace(/^@+/, "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 30);
+    let ticker = String(data.get("ticker")).trim().toUpperCase().replace(/[^A-Z0-9$]/g, "");
+    ticker = "$" + ticker.replace(/\$/g, "");
+    if (!handle || ticker.length < 2) return toast("Enter a username and ticker");
+    const list = loadLaunches();
+    if (list.some((t) => t.ticker === ticker)) return toast(`${ticker} already exists in Explore`);
+    const token = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      handle,
+      ticker,
+      platform: data.get("platform") === "fomo" ? "fomo" : "x",
+      creator: window.blerWallet.address,
+      createdAt: Date.now(),
+      status: "draft",
+    };
+    list.push(token);
+    if (!saveLaunches(list)) return toast("Could not save — browser storage is blocked");
     closeModals();
     e.target.reset();
-    toast(`${ticker} saved — launching via Pons V2 opens soon 🚀`);
+    renderLaunches(token.id);
+    document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
+    toast(`${ticker} added to Explore 🚀`);
   });
 
   $$(".btn-buy, .btn-sell").forEach((b) =>
@@ -101,7 +174,7 @@
   }
 
   // ---------- Bottom nav active state ----------
-  const sections = ["home", "features", "how"].map((id) => document.getElementById(id));
+  const sections = ["home", "explore", "how"].map((id) => document.getElementById(id));
   const navItems = $$(".bottom-nav a.bn-item");
   const io = new IntersectionObserver(
     (entries) => {
