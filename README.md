@@ -18,6 +18,7 @@ npx serve .
 - `script.js` — UI, Explore list, wallet connection (EIP-6963 / EIP-1193)
 - `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
 - `trade.js` — Buy/Sell panel (opened from Explore or by pasting a token address)
+- `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
 - `explore.js` — Explore read from chain: latest Pons V2 launches + tokens deployed by the connected wallet
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
@@ -42,8 +43,10 @@ curve's constant-product math minus curve + creator fees; every trade is
 simulated before signing. Selling approves the exact amount first if needed.
 Verified against mainnet with the SwapMeet ($MEET) curve.
 
-Explore reads `TokenLaunched` logs from the factory over the public RPC
-(CORS-enabled) and batches token/curve reads through Multicall3. If the public
-RPC fails, it falls back to the connected wallet's RPC. Launches sent from this
+Explore reads `TokenLaunched` logs from the factory and batches token/curve
+reads through Multicall3. Reads go through `/api/rpc` first: the public RPC
+answers rate-limited requests (HTTP 429) with a duplicated CORS header
+(`*,*`) that browsers reject, so the same-origin proxy avoids CORS and retries
+429s server-side. Fallbacks: public RPC directly, then the connected wallet. Launches sent from this
 browser are saved by tx hash as "confirming" until the receipt is found, so a
 launch is never lost if the page closes mid-way.

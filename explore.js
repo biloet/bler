@@ -68,7 +68,7 @@ function showEmpty(kind) {
   const openLaunch = () => document.querySelector("[data-open-launch]")?.click();
   if (kind === "connect") set("👛", "Connect your wallet", "See every token your wallet launched on Pons V2 — from any browser.", "Connect wallet", () => document.querySelector("[data-open-wallet]")?.click());
   else if (kind === "mine") set("🚀", "No tokens from this wallet yet", "Launch your X or fomo profile — it shows up here as soon as it confirms.", "Launch your profile", openLaunch);
-  else if (kind === "error") set("⚠️", "Couldn't reach Robinhood Chain", "Check your connection and try again.", "Retry", () => refresh(true));
+  else if (kind === "error") set("⏳", "Robinhood Chain is busy", "We couldn't load tokens just now. Retrying automatically…", "Retry now", () => refresh(true));
   else set("🚀", "No launches in the last few hours", "Be the first — launch your profile.", "Launch your profile", openLaunch);
 }
 
@@ -126,11 +126,13 @@ async function refresh(force = false) {
         cache.mineFor = w.address;
       }
     }
-    refresh.retried = false;
+    refresh.retries = 0;
   } catch (err) {
     console.warn("Explore load failed", err);
     cache.error = true;
-    if (!refresh.retried) { refresh.retried = true; setTimeout(() => refresh(true), 3000); }
+    // back off and retry a few times (rate limits clear within seconds)
+    refresh.retries = (refresh.retries || 0) + 1;
+    if (refresh.retries <= 4) setTimeout(() => refresh(true), 2000 * refresh.retries);
   } finally {
     loading = false;
     render();

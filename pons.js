@@ -106,8 +106,19 @@ function friendly(err) {
   return new LaunchError(err?.message || "Unknown error");
 }
 
+// Reads without a wallet: our own /api/rpc proxy first (same origin, retries
+// rate limits), then the public RPC directly. Requests are batched.
+const PROXY_URL = new URL("/api/rpc", location.origin).href;
+const batch = { batchSize: 25, wait: 20 };
+function readTransports() {
+  return [
+    http(PROXY_URL, { batch, retryCount: 1, retryDelay: 600 }),
+    http(chain.rpcUrls.default.http[0], { batch, retryCount: 2, retryDelay: 800 }),
+  ];
+}
+
 function clients(provider) {
-  const transport = provider ? custom(provider) : http(chain.rpcUrls.default.http[0]);
+  const transport = provider ? custom(provider) : fallback(readTransports());
   return {
     publicClient: createPublicClient({ chain, transport }),
     walletClient: createWalletClient({ chain, transport }),
@@ -359,11 +370,11 @@ export async function sell({ provider, account, market: m, tokensIn, slippageBps
 // ---------------------------------------------------------------------------
 const LOG_SPAN = 9_900_000n; // RPC allows 10M blocks per getLogs
 const launchedEvent = factoryAbi.find((x) => x.type === "event" && x.name === "TokenLaunched");
-// Public RPC first; if it fails (rate limit, flaky network) fall back to the
-// connected wallet's own RPC when it's on Robinhood Chain.
+// Proxy, then public RPC; if both fail fall back to the connected wallet's own
+// RPC when it's on Robinhood Chain.
 function readClient() {
   const w = window.blerWallet;
-  const transports = [http(chain.rpcUrls.default.http[0], { retryCount: 2, retryDelay: 400 })];
+  const transports = readTransports();
   if (w?.provider && w.address && w.chainId === CHAIN_ID) transports.push(custom(w.provider));
   return createPublicClient({ chain, transport: fallback(transports) });
 }
