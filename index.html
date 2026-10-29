@@ -13,7 +13,24 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="bg-glow" aria-hidden="true"></div>
+  <!-- Cinematic layers -->
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro-inner">
+      <img src="assets/logo.svg" alt="" width="72" height="72" />
+      <span class="intro-word">BLER</span>
+    </div>
+    <div class="letterbox top"></div><div class="letterbox bottom"></div>
+  </div>
+  <div class="bg-glow" aria-hidden="true">
+    <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+  </div>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="hero-fx" aria-hidden="true">
+    <div class="beam"></div>
+    <div class="grid-floor"></div>
+  </div>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
 
   <!-- Header -->
   <header class="header">
@@ -44,9 +61,9 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </a>
 
-      <h1 class="hero-title">
-        Your profile.<br />
-        Now a market.
+      <h1 class="hero-title" aria-label="Your profile. Now a market.">
+        <span class="line"><span class="word" style="--i:0">Your</span> <span class="word" style="--i:1">profile.</span></span>
+        <span class="line"><span class="word" style="--i:2">Now</span> <span class="word" style="--i:3">a</span> <span class="word shine" style="--i:4">market.</span></span>
       </h1>
 
       <p class="hero-sub">
@@ -63,7 +80,11 @@
       </div>
 
       <!-- Browser mockup -->
-      <div class="mockup" role="img" aria-label="Preview of a BLER profile market">
+      <div class="mockup-stage" id="stage">
+      <div class="mockup-halo" aria-hidden="true"></div>
+      <div class="float-chip chip-1" aria-hidden="true"><span class="up">▲</span> @budibuilds +41.7%</div>
+      <div class="float-chip chip-2" aria-hidden="true">🔥 1,284 holders</div>
+      <div class="mockup" id="mockup" role="img" aria-label="Preview of a BLER profile market">
         <div class="mockup-bar">
           <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
           <span class="mockup-url">bler.app/you</span>
@@ -111,6 +132,14 @@
           </div>
         </div>
       </div>
+      </div>
+    </section>
+
+    <!-- Big numbers -->
+    <section class="numbers container" aria-label="Platform stats">
+      <div class="num"><strong data-count="24800000" data-prefix="$" data-compact>$0</strong><span>Total volume</span></div>
+      <div class="num"><strong data-count="18420">0</strong><span>Profiles launched</span></div>
+      <div class="num"><strong data-count="0.4" data-suffix="s" data-decimals="1">0s</strong><span>Avg. trade time</span></div>
     </section>
 
     <!-- Ticker strip -->
@@ -121,7 +150,7 @@
     <!-- Explore -->
     <section class="section container" id="explore">
       <div class="section-head">
-        <span class="eyebrow">Trending</span>
+        <span class="eyebrow"><i></i>Trending</span>
         <h2>Explore profiles</h2>
         <p>The hottest creator markets right now.</p>
       </div>
@@ -136,7 +165,7 @@
     <!-- How it works -->
     <section class="section container" id="how">
       <div class="section-head">
-        <span class="eyebrow">How it works</span>
+        <span class="eyebrow"><i></i>How it works</span>
         <h2>Three steps. Zero friction.</h2>
       </div>
       <div class="steps">
@@ -161,7 +190,7 @@
     <!-- Features -->
     <section class="section container" id="features">
       <div class="section-head">
-        <span class="eyebrow">Why BLER</span>
+        <span class="eyebrow"><i></i>Why BLER</span>
         <h2>Built for speed.<br />Non-custodial by design.</h2>
       </div>
       <div class="features">
@@ -191,7 +220,7 @@
     <!-- FAQ -->
     <section class="section container narrow" id="faq">
       <div class="section-head">
-        <span class="eyebrow">FAQ</span>
+        <span class="eyebrow"><i></i>FAQ</span>
         <h2>Questions?</h2>
       </div>
       <div class="faq">
