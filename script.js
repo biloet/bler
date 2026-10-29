@@ -45,7 +45,7 @@
     if (!ticker.startsWith("$")) ticker = "$" + ticker;
     closeModals();
     e.target.reset();
-    toast(`${ticker} ready to launch on ${data.get("chain")} 🚀`);
+    toast(`${ticker} ready to launch on Robinhood Chain 🚀`);
   });
 
   $$(".btn-buy, .btn-sell").forEach((b) =>
