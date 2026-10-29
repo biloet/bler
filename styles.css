@@ -615,3 +615,16 @@ h1, h2, h3 { text-wrap: balance; }
 .src-fomo { background: linear-gradient(135deg, #ff8a00, #ff3d77); color: #fff; }
 .net-note { font-size: 13px; color: var(--muted); display: flex; align-items: center; }
 .num strong { font-size: clamp(36px, 9vw, 56px); }
+
+/* Wallet */
+.acct { background: #0f0f12; border: 1px solid var(--border); border-radius: 14px; padding: 6px 14px; margin-bottom: 14px; }
+.acct-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 14px; }
+.acct-row + .acct-row { border-top: 1px solid var(--border); }
+.acct-row a { font-family: var(--mono); text-decoration: underline; text-underline-offset: 3px; }
+#walletConnected .btn + .btn { margin-top: 10px; }
+.btn.is-connected { font-family: var(--mono); font-size: 14px; }
+.btn.is-connected.wrong-net { background: linear-gradient(180deg, #ffe1e1, #ffc9c9); }
+[hidden] { display: none !important; }
+.toast, .toast.show { bottom: auto; top: calc(16px + env(safe-area-inset-top)); }
+.toast { transform: translate(-50%, -20px); }
+.toast.show { transform: translate(-50%, 0); }

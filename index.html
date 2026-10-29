@@ -270,12 +270,23 @@
         <h3 id="walletTitle">Connect wallet</h3>
         <button class="icon-btn" data-close aria-label="Close">✕</button>
       </div>
-      <div class="wallet-list">
-        <button class="wallet" data-wallet="MetaMask"><span class="w-ico" style="background:#f6851b">🦊</span>MetaMask</button>
-        <button class="wallet" data-wallet="Coinbase Wallet"><span class="w-ico" style="background:#0052ff">◎</span>Coinbase Wallet</button>
-        <button class="wallet" data-wallet="WalletConnect"><span class="w-ico" style="background:#3b99fc">∿</span>WalletConnect</button>
+      <div id="walletChoose">
+        <div class="wallet-list">
+          <button class="wallet" data-wallet="metamask"><span class="w-ico" style="background:#f6851b">🦊</span>MetaMask</button>
+          <button class="wallet" data-wallet="coinbase"><span class="w-ico" style="background:#0052ff">◎</span>Coinbase Wallet</button>
+          <button class="wallet" data-wallet="injected"><span class="w-ico" style="background:#2a2a33">🌐</span>Other browser wallet</button>
+        </div>
+        <p class="muted small">Connects to Robinhood Chain (ID 4663). On mobile, this opens BLER inside your wallet app.</p>
       </div>
-      <p class="muted small">Demo UI — no wallet is actually connected yet.</p>
+      <div id="walletConnected" hidden>
+        <div class="acct">
+          <div class="acct-row"><span class="muted">Address</span><a id="acctAddr" target="_blank" rel="noopener"></a></div>
+          <div class="acct-row"><span class="muted">Network</span><span id="acctNet"></span></div>
+          <div class="acct-row"><span class="muted">Balance</span><span id="acctBal">—</span></div>
+        </div>
+        <button class="btn btn-light btn-lg full" id="switchNet" hidden>Switch to Robinhood Chain</button>
+        <button class="btn btn-dark btn-lg full" id="disconnect">Disconnect</button>
+      </div>
     </div>
   </div>
 

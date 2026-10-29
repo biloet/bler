@@ -19,7 +19,7 @@
     const m = document.getElementById(id);
     m.hidden = false;
     document.body.style.overflow = "hidden";
-    const focusable = m.querySelector("input, .wallet");
+    const focusable = m.querySelector("input");
     if (focusable) setTimeout(() => focusable.focus(), 50);
   }
   function closeModals() {
@@ -31,12 +31,6 @@
   $$("[data-close]").forEach((b) => b.addEventListener("click", closeModals));
   document.addEventListener("keydown", (e) => e.key === "Escape" && closeModals());
 
-  $$(".wallet").forEach((w) =>
-    w.addEventListener("click", () => {
-      closeModals();
-      toast(`${w.dataset.wallet} — wallet integration coming soon`);
-    })
-  );
 
   $("#launchForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -45,11 +39,15 @@
     if (!ticker.startsWith("$")) ticker = "$" + ticker;
     closeModals();
     e.target.reset();
-    toast(`${ticker} ready to launch on Robinhood Chain 🚀`);
+    toast(`${ticker} saved — launching via Pons V2 opens soon 🚀`);
   });
 
   $$(".btn-buy, .btn-sell").forEach((b) =>
-    b.addEventListener("click", () => openModal("walletModal"))
+    b.addEventListener("click", () =>
+      window.blerWallet?.address
+        ? toast("Trading opens once the Pons V2 integration is live")
+        : openModal("walletModal")
+    )
   );
 
   // ---------- Hero chart (live-ish random walk) ----------
@@ -280,4 +278,180 @@
       el.classList.remove("in-start");
     }, 350);
   }, 2400), 3000);
+})();
+
+// ================= Wallet (EIP-1193 / EIP-6963) =================
+(() => {
+  const CHAIN_ID = 4663;
+  const CHAIN = {
+    chainId: "0x" + CHAIN_ID.toString(16),
+    chainName: "Robinhood Chain",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
+    blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+  };
+  const STORE_KEY = "bler-wallet";
+  const $ = (s) => document.querySelector(s);
+  const toast = (msg) => {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove("show"), 3200);
+  };
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Discover wallets (EIP-6963), with window.ethereum as fallback
+  const announced = [];
+  addEventListener("eip6963:announceProvider", (e) => announced.push(e.detail));
+  dispatchEvent(new Event("eip6963:requestProvider"));
+
+  function findProvider(kind) {
+    const byRdns = (r) => announced.find((d) => d.info?.rdns === r)?.provider;
+    const eth = window.ethereum;
+    const list = eth?.providers?.length ? eth.providers : eth ? [eth] : [];
+    if (kind === "metamask") return byRdns("io.metamask") || list.find((p) => p.isMetaMask && !p.isCoinbaseWallet);
+    if (kind === "coinbase") return byRdns("com.coinbase.wallet") || list.find((p) => p.isCoinbaseWallet);
+    return announced[0]?.provider || list[0];
+  }
+
+  function openInWalletApp(kind) {
+    const url = location.href.replace(/#.*$/, "");
+    if (kind === "coinbase") {
+      location.href = "https://go.cb-w.com/dapp?cb_url=" + encodeURIComponent(url);
+    } else {
+      location.href = "https://metamask.app.link/dapp/" + url.replace(/^https?:\/\//, "");
+    }
+  }
+
+  const state = (window.blerWallet = { provider: null, address: null, chainId: null, kind: null });
+  const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+
+  function formatEth(hexWei) {
+    const wei = BigInt(hexWei);
+    const whole = wei / 10n ** 18n;
+    const frac = (wei % 10n ** 18n).toString().padStart(18, "0").slice(0, 4);
+    return `${whole}.${frac} ETH`;
+  }
+
+  async function refreshBalance() {
+    if (!state.address || state.chainId !== CHAIN_ID) return ($("#acctBal").textContent = "—");
+    try {
+      const bal = await state.provider.request({ method: "eth_getBalance", params: [state.address, "latest"] });
+      $("#acctBal").textContent = formatEth(bal);
+    } catch {
+      $("#acctBal").textContent = "—";
+    }
+  }
+
+  function render() {
+    const connected = !!state.address;
+    const onChain = state.chainId === CHAIN_ID;
+    document.querySelectorAll("[data-open-wallet]").forEach((b) => {
+      b.textContent = connected ? (onChain ? "● " : "⚠ ") + short(state.address) : "Connect wallet";
+      b.classList.toggle("is-connected", connected);
+      b.classList.toggle("wrong-net", connected && !onChain);
+    });
+    $("#walletChoose").hidden = connected;
+    $("#walletConnected").hidden = !connected;
+    $("#walletTitle").textContent = connected ? "Your wallet" : "Connect wallet";
+    if (connected) {
+      const a = $("#acctAddr");
+      a.textContent = short(state.address);
+      a.href = `${CHAIN.blockExplorerUrls[0]}/address/${state.address}`;
+      $("#acctNet").textContent = onChain ? "Robinhood Chain" : `Wrong network (${state.chainId})`;
+      $("#acctNet").className = onChain ? "up" : "down";
+      $("#switchNet").hidden = onChain;
+      refreshBalance();
+    }
+  }
+
+  async function ensureChain() {
+    try {
+      await state.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN.chainId }] });
+    } catch (err) {
+      const code = err?.code ?? err?.data?.originalError?.code;
+      if (code === 4902 || /unrecognized|not added|unknown chain/i.test(err?.message || "")) {
+        await state.provider.request({ method: "wallet_addEthereumChain", params: [CHAIN] });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  function attach(provider, kind) {
+    if (state.provider === provider) return;
+    state.provider = provider;
+    state.kind = kind;
+    provider.on?.("accountsChanged", (accs) => {
+      state.address = accs[0] || null;
+      if (!state.address) forget();
+      render();
+    });
+    provider.on?.("chainChanged", (id) => {
+      state.chainId = parseInt(id, 16);
+      render();
+    });
+  }
+
+  function forget() {
+    state.address = null;
+    try { localStorage.removeItem(STORE_KEY); } catch {}
+  }
+
+  async function connect(kind) {
+    const provider = findProvider(kind);
+    if (!provider) {
+      if (isMobile) return openInWalletApp(kind);
+      toast(kind === "coinbase" ? "Install the Coinbase Wallet extension first" : "Install MetaMask (or another wallet extension) first");
+      if (kind !== "injected") window.open(kind === "coinbase" ? "https://www.coinbase.com/wallet/downloads" : "https://metamask.io/download/", "_blank", "noopener");
+      return;
+    }
+    attach(provider, kind);
+    try {
+      const accs = await provider.request({ method: "eth_requestAccounts" });
+      state.address = accs[0];
+      state.chainId = parseInt(await provider.request({ method: "eth_chainId" }), 16);
+      try { localStorage.setItem(STORE_KEY, kind); } catch {}
+      render();
+      if (state.chainId !== CHAIN_ID) {
+        try {
+          await ensureChain();
+        } catch {
+          toast("Connected — switch to Robinhood Chain to continue");
+          return;
+        }
+      }
+      toast("Wallet connected ✓");
+    } catch (err) {
+      toast(err?.code === 4001 ? "Request rejected in wallet" : "Could not connect: " + (err?.message || "unknown error"));
+    }
+  }
+
+  document.querySelectorAll(".wallet").forEach((b) => b.addEventListener("click", () => connect(b.dataset.wallet)));
+  $("#switchNet").addEventListener("click", () =>
+    ensureChain().catch((e) => toast(e?.code === 4001 ? "Request rejected in wallet" : "Could not switch network"))
+  );
+  $("#disconnect").addEventListener("click", async () => {
+    try { await state.provider?.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] }); } catch {}
+    forget();
+    render();
+    toast("Disconnected");
+  });
+
+  // Restore a previous session without prompting
+  setTimeout(async () => {
+    let kind = null;
+    try { kind = localStorage.getItem(STORE_KEY); } catch {}
+    const provider = kind && findProvider(kind);
+    if (!provider) return;
+    try {
+      const accs = await provider.request({ method: "eth_accounts" });
+      if (!accs[0]) return forget();
+      attach(provider, kind);
+      state.address = accs[0];
+      state.chainId = parseInt(await provider.request({ method: "eth_chainId" }), 16);
+      render();
+    } catch {}
+  }, 300);
 })();
