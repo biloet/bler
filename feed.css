@@ -414,3 +414,24 @@ body { background: #000; }
 .story .rk.r1 { background: #fff; color: #000; }
 .story .slabel { margin-top: 4px; }
 .schg { font-size: 11px; font-weight: 600; margin-top: -4px; color: var(--muted); }
+
+/* Official $BLER contract address */
+.official { display: inline-flex; align-items: center; gap: 10px; margin: 22px auto 0; padding: 6px 6px 6px 10px; border-radius: 99px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10); max-width: 100%; }
+.official img { border-radius: 7px; flex: none; }
+.of-l { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; text-align: left; }
+.of-l b { font-size: 13px; font-weight: 800; }
+.of-l small { font-size: 10px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.of-ca { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); font-size: 13px; color: var(--text); }
+.of-ca svg, .of-x svg, .ofb-ca svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.of-ca:hover, .of-x:hover { background: rgba(255,255,255,.10); }
+.of-x { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+.ofb { padding: 0 16px 4px; }
+.ofb-h { display: flex; align-items: center; gap: 10px; }
+.ofb-h img { border-radius: 9px; }
+.ofb-h span { display: flex; flex-direction: column; line-height: 1.2; }
+.ofb-h b { font-weight: 800; }
+.ofb-h small { font-size: 13px; color: var(--muted); }
+.ofb-ca { margin-top: 12px; width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--border); font-size: 12px; color: var(--text); text-align: left; }
+.ofb-ca span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ofb-ca:hover { background: rgba(255,255,255,.08); }
+.ofbox .rmore { display: block; padding: 12px 0 10px; }
