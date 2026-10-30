@@ -68,6 +68,23 @@ function avatar(t, size = "") {
   const img = logo ? `<img src="${esc(logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
   return `<div class="av ${size}" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${img}<span>${esc((t.symbol || "?")[0].toUpperCase())}</span></div>`;
 }
+// Cinematic line icons (glow comes from CSS: .ci / .ei)
+const svg = (d, w = 1.9) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const CI = {
+  rocket: svg('<path d="M5 15c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2-.1-2.8-.8-.8-2.1-.8-2.9-.2z"/><path d="m12 15-3-3a22 22 0 0 1 2-4A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22 22 0 0 1-4 2z"/><path d="M9 12H4s.5-3 2-4c1.6-1.1 5 0 5 0M12 15v5s3-.5 4-2c1.1-1.6 0-5 0-5"/>'),
+  spark: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>'),
+  flame: svg('<path d="M12 22c4 0 7-2.7 7-7 0-4.2-3-6.6-4.3-9.8-.3-.7-1.2-.8-1.6-.2C11.7 7 12 9 12 9s-1.8-1.3-2.5-3.4c-.2-.6-1-.8-1.4-.3C6.4 7.6 5 10.4 5 15c0 4.3 3 7 7 7z"/><path d="M12 22c-1.7 0-3-1.3-3-3.2 0-2 1.6-3.1 3-4.8 1.4 1.7 3 2.8 3 4.8 0 1.9-1.3 3.2-3 3.2z"/>'),
+  cap: svg('<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 2 9 2 12 0v-5M22 10v6"/>'),
+  hourglass: svg('<path d="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"/>'),
+  tag: svg('<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'),
+  wallet: svg('<path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 9h-5a3 3 0 0 0 0 6h5z"/>', 1.8),
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  vault: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5V7M12 17v-1.5M15.5 12H17M7 12h1.5"/>'),
+  pulse: svg('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'),
+  signal: svg('<path d="M5 12.6a10 10 0 0 1 14 0M8.5 16.1a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/><path d="M2 9a14.5 14.5 0 0 1 20 0"/>'),
+};
+const ci = (name, tone) => `<i class="ci ci-${tone}">${CI[name]}</i>`;
+
 const ICON = {
   trades: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
   curve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20c6 0 9-4 11-9s4-7 7-7"/><circle cx="21" cy="4" r="1.6"/></svg>',
@@ -206,13 +223,13 @@ function matches(t, q) {
 function postText(t, st, n) {
   const sym = `<span class="tk">$${esc(t.symbol)}</span>`;
   const ageMs = Date.now() - (t.createdAt || 0);
-  if (t.status === "pending") return `Launching ${sym} on BLER… confirming on Robinhood Chain ⏳`;
-  if (st?.graduated) return `${sym} graduated to Uniswap V4 🎓`;
-  if (st?.progress >= 0.7) return `${sym} is about to graduate: bonding curve ${(st.progress * 100).toFixed(0)}% 🎓`;
-  if (ageMs < 3600e3 && n < 3) return `Just launched my profile on BLER 🚀 ${sym}, come early 👀`;
-  if (n === 0) return `${sym} is live. No trades yet. Be the first 👀`;
-  if ((st?.change ?? 0) > 0.2 && n >= 5) return `${sym} is pumping with ${n} trades so far 🔥`;
-  if ((st?.change ?? 0) < -0.2) return `${sym} is on sale, down ${Math.abs(st.change * 100).toFixed(0)}% since launch 👀`;
+  if (t.status === "pending") return `Launching ${sym} on BLER… confirming on Robinhood Chain ${ci("hourglass", "amber")}`;
+  if (st?.graduated) return `${sym} graduated to Uniswap V4 ${ci("cap", "violet")}`;
+  if (st?.progress >= 0.7) return `${sym} is about to graduate: bonding curve ${(st.progress * 100).toFixed(0)}% ${ci("cap", "violet")}`;
+  if (ageMs < 3600e3 && n < 3) return `${ci("rocket", "blue")} Just launched my profile on BLER: ${sym}, come early ${ci("spark", "blue")}`;
+  if (n === 0) return `${sym} is live. No trades yet. Be the first ${ci("spark", "blue")}`;
+  if ((st?.change ?? 0) > 0.2 && n >= 5) return `${ci("flame", "green")} ${sym} is pumping with ${n} trades so far`;
+  if ((st?.change ?? 0) < -0.2) return `${sym} is on sale, down ${Math.abs(st.change * 100).toFixed(0)}% since launch ${ci("tag", "pink")}`;
   return `${sym} has ${n} trade${n === 1 ? "" : "s"} so far on BLER`;
 }
 
@@ -311,19 +328,20 @@ const ABOUT = `
 function empty(kind) {
   const m = {
     loading: ["", ""],
-    error: ["⏳ Robinhood Chain is busy", "Couldn't load tokens just now. Retrying automatically…"],
-    none: ["🚀 No BLER tokens yet", "Be the first to launch your profile."],
-    search: ["🔎 No matches", "Try a ticker, a name, an @handle, or paste a token address."],
-    connect: ["👛 Connect your wallet", "See the BLER tokens you hold."],
-    holding: ["🫙 Nothing here yet", "Buy a BLER token and it shows up here."],
-    activity: ["📭 No trades yet", "Buys and sells on BLER tokens show up here."],
+    error: ["hourglass|amber|Robinhood Chain is busy", "Couldn't load tokens just now. Retrying automatically…"],
+    none: ["rocket|blue|No BLER tokens yet", "Be the first to launch your profile."],
+    search: ["search|blue|No matches", "Try a ticker, a name, an @handle, or paste a token address."],
+    connect: ["wallet|blue|Connect your wallet", "See the BLER tokens you hold."],
+    holding: ["vault|violet|Nothing here yet", "Buy a BLER token and it shows up here."],
+    activity: ["pulse|green|No trades yet", "Buys and sells on BLER tokens show up here."],
   }[kind];
   const el = $("#fEmpty");
   if (!m || kind === "loading") { el.hidden = true; return; }
   el.hidden = false;
   const action = kind === "connect" ? `<button type="button" class="btn-launch" data-open-wallet-proxy>Connect wallet</button>`
     : kind === "none" ? `<button type="button" class="btn-launch" data-open-launch>Launch your profile</button>` : "";
-  el.innerHTML = `<b>${m[0]}</b><p>${m[1]}</p>${action}`;
+  const [icon, tone, title] = m[0].split("|");
+  el.innerHTML = `<span class="ei ei-${tone}">${CI[icon]}</span><b>${title}</b><p>${m[1]}</p>${action}`;
 }
 
 function currentList() {
@@ -396,7 +414,7 @@ function announceNewTrades() {
   for (const t of state.all) for (const x of tradesOf(t)) if (!newest || (x.ts || 0) > (newest.x.ts || 0)) newest = { t, x };
   if (!newest) return;
   if (lastTradeTs != null && newest.x.ts > lastTradeTs + 1000) {
-    ui()?.toast(`${newest.x.side === "buy" ? "🟢" : "🔴"} ${short(newest.x.account)} ${newest.x.side === "buy" ? "bought" : "sold"} ${num(newest.x.eth)} ETH of $${newest.t.symbol}`);
+    ui()?.toast(`${short(newest.x.account)} ${newest.x.side === "buy" ? "bought" : "sold"} ${num(newest.x.eth)} ETH of $${newest.t.symbol}`, newest.x.side);
   }
   lastTradeTs = newest.x.ts;
 }
@@ -605,7 +623,8 @@ $("#mSearch input").addEventListener("input", (e) => { state.query = e.target.va
 // mobile wallet button mirrors the wallet state
 function renderMobileWallet() {
   const w = window.blerWallet, b = $("#mWallet");
-  b.textContent = w?.address ? w.address.slice(2, 4).toUpperCase() : "👛";
+  if (w?.address) b.textContent = w.address.slice(2, 4).toUpperCase();
+  else b.innerHTML = CI.wallet;
   b.classList.toggle("on", !!w?.address);
 }
 $("#mWallet").addEventListener("click", () => ui()?.openModal("walletModal"));
@@ -616,13 +635,13 @@ function renderWalletChip() {
   if (!chip) return;
   if (!w?.address) {
     chip.classList.remove("on");
-    chip.innerHTML = '<span class="me-av">👛</span><span class="me-txt"><b>Connect wallet</b><span class="muted">Tap to connect</span></span>';
+    chip.innerHTML = '<span class="me-av">' + CI.wallet + '</span><span class="me-txt"><b>Connect wallet</b><span class="muted">Tap to connect</span></span>';
     return;
   }
   const ok = w.chainId === pons()?.CHAIN_ID;
   const hue = parseInt(w.address.slice(2, 6), 16) % 360;
   chip.classList.add("on");
-  chip.innerHTML = `<span class="me-av" style="background:linear-gradient(135deg,hsl(${hue} 80% 60%),hsl(${(hue + 80) % 360} 80% 55%))">${w.address.slice(2, 4).toUpperCase()}</span><span class="me-txt"><b class="mono">${short(w.address)}</b><span class="${ok ? "up" : "down"}">${ok ? "● Robinhood Chain" : "⚠ Wrong network"}</span></span><span class="me-dots">⋯</span>`;
+  chip.innerHTML = `<span class="me-av" style="background:linear-gradient(135deg,hsl(${hue} 80% 60%),hsl(${(hue + 80) % 360} 80% 55%))">${w.address.slice(2, 4).toUpperCase()}</span><span class="me-txt"><b class="mono">${short(w.address)}</b><span class="${ok ? "up" : "down"}">${ok ? "● Robinhood Chain" : "○ Wrong network"}</span></span><span class="me-dots">⋯</span>`;
 }
 $("#meChip").addEventListener("click", () => ui()?.openModal("walletModal"));
 

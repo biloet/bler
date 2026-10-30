@@ -378,7 +378,7 @@ async function open(addr, { side: startSide = "buy", justLaunched = false } = {}
     return;
   }
   setShare(market);
-  if (justLaunched) setStatus("🎉 Your token is live! Share it on X to get your first buyers.", "ok");
+  if (justLaunched) setStatus("Your token is live. Share it on X to get your first buyers.", "ok");
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
     if ($("#tradeModal").hidden) return clearInterval(refreshTimer);
@@ -411,9 +411,9 @@ $("#tCa").addEventListener("click", async () => {
   if (!isAddress(addr)) return;
   const ok = await copyText(addr);
   const label = $("#tCaCopy");
-  label.textContent = ok ? "Copied ✓" : "Copy failed";
+  label.textContent = ok ? "Copied" : "Copy failed";
   label.classList.toggle("done", ok);
-  ui().toast(ok ? "Contract address copied" : "Couldn't copy. Long-press the address to copy it");
+  ui().toast(ok ? "Contract address copied" : "Couldn't copy. Long-press the address to copy it", ok ? "ok" : "err");
   clearTimeout(label._t);
   label._t = setTimeout(() => { label.textContent = "Copy"; label.classList.remove("done"); }, 2000);
 });
@@ -447,12 +447,12 @@ $("#tradeForm").addEventListener("submit", async (e) => {
     if (side === "buy") {
       if (amt > market.ethBalance) throw new Error("Not enough ETH in your wallet for this buy plus gas.");
       const res = await pons().buy({ ...args, ethIn: amt });
-      setStatus(`Bought ${tokStr(res.tokensOut, market)} ✓`, "ok");
-      ui().toast(`Bought ${tokStr(res.tokensOut, market)} 🟢`);
+      setStatus(`Bought ${tokStr(res.tokensOut, market)}`, "ok");
+      ui().toast(`Bought ${tokStr(res.tokensOut, market)}`, "buy");
     } else {
       const res = await pons().sell({ ...args, tokensIn: amt });
-      setStatus(`Sold for ${ethStr(res.ethOut)} ✓`, "ok");
-      ui().toast(`Sold for ${ethStr(res.ethOut)} 🔴`);
+      setStatus(`Sold for ${ethStr(res.ethOut)}`, "ok");
+      ui().toast(`Sold for ${ethStr(res.ethOut)}`, "sell");
     }
     $("#tAmt").value = "";
     delete $("#tAmt").dataset.exact;
@@ -469,7 +469,7 @@ $("#tradeForm").addEventListener("submit", async (e) => {
 $("#tCopyLink").addEventListener("click", async () => {
   if (!market) return;
   const ok = await copyText(tokenUrl(market.token));
-  ui().toast(ok ? "Link copied. Paste it anywhere" : "Couldn't copy the link");
+  ui().toast(ok ? "Link copied. Paste it anywhere" : "Couldn't copy the link", ok ? "ok" : "err");
 });
 
 // Closing the panel clears the token link from the URL

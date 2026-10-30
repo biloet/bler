@@ -7,9 +7,11 @@
 
   // ---------- Toast ----------
   let toastTimer;
-  function toast(msg) {
+  // kind: "info" | "ok" | "buy" | "sell" | "err" (a glowing dot shows the kind)
+  function toast(msg, kind = "info") {
     const t = $("#toast");
     t.textContent = msg;
+    t.dataset.kind = kind;
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
@@ -32,7 +34,7 @@
     if (e.target.closest("[data-open-wallet]")) openModal("walletModal");
     else if (e.target.closest("[data-open-launch]")) { openModal("launchModal"); refreshLaunchInfo(); }
   });
-  window.blerUI = { openModal, closeModals, toast: (m) => toast(m) };
+  window.blerUI = { openModal, closeModals, toast: (m, k) => toast(m, k) };
   $$("[data-close]").forEach((b) => b.addEventListener("click", closeModals));
   document.addEventListener("keydown", (e) => e.key === "Escape" && closeModals());
 
@@ -121,7 +123,7 @@
       // open the new token's page right away so it can be shared
       if (window.blerTrade) window.blerTrade.open(res.token, { justLaunched: true });
       else document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" });
-      toast(`$${symbol} is live 🚀`);
+      toast(`$${symbol} is live`, "ok");
     } catch (err) {
       setStatus(err?.message || "Launch failed", "err");
     } finally {
@@ -144,9 +146,10 @@
   };
   const STORE_KEY = "bler-wallet";
   const $ = (s) => document.querySelector(s);
-  const toast = (msg) => {
+  const toast = (msg, kind = "info") => {
     const t = $("#toast");
     t.textContent = msg;
+    t.dataset.kind = kind;
     t.classList.add("show");
     clearTimeout(t._timer);
     t._timer = setTimeout(() => t.classList.remove("show"), 3200);
@@ -205,7 +208,7 @@
     const connected = !!state.address;
     const onChain = state.chainId === CHAIN_ID;
     document.querySelectorAll("[data-open-wallet]").forEach((b) => {
-      b.textContent = connected ? (onChain ? "● " : "⚠ ") + short(state.address) : "Connect wallet";
+      b.textContent = connected ? (onChain ? "● " : "○ ") + short(state.address) : "Connect wallet";
       b.classList.toggle("is-connected", connected);
       b.classList.toggle("wrong-net", connected && !onChain);
     });
@@ -284,7 +287,7 @@
           return;
         }
       }
-      toast("Wallet connected ✓");
+      toast("Wallet connected", "ok");
     } catch (err) {
       toast(err?.code === 4001 ? "Request rejected in wallet" : "Could not connect: " + (err?.message || "unknown error"));
     }
