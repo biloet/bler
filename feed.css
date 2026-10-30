@@ -19,7 +19,7 @@ body { background: #000; color: var(--text); padding-bottom: 0; font-size: 15px;
 /* ---------- layout ---------- */
 .app { display: grid; grid-template-columns: minmax(0, 600px); justify-content: center; min-height: 100vh; }
 .side-l, .side-r { display: none; }
-.feed { border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; padding-bottom: 96px; min-width: 0; }
+.feed { border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; padding-bottom: 110px; min-width: 0; }
 @media (max-width: 599px) { .feed { border: 0; } }
 @media (min-width: 1000px) {
   .app { grid-template-columns: 260px 600px; }
@@ -175,12 +175,22 @@ body { background: #000; color: var(--text); padding-bottom: 0; font-size: 15px;
 .rfoot button:hover { text-decoration: underline; }
 
 /* ---------- mobile chrome ---------- */
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(0,0,0,.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; }
-.tabbar button { width: 56px; height: 48px; display: grid; place-items: center; color: var(--text); }
-.tabbar svg { width: 26px; height: 26px; }
-.tabbar button.on svg { stroke-width: 2.7; }
-.tabbar button:not(.on) { color: #c4c7c9; }
-.fab { position: fixed; right: 16px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 41; width: 58px; height: 58px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 30px; font-weight: 300; display: grid; place-items: center; box-shadow: 0 8px 24px rgba(29,155,240,.45); }
+/* Floating glass capsule tab bar, same look as the feed tabs */
+.tabbar { --pad: 5px; position: fixed; left: 14px; right: 14px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 40; height: 60px; padding: var(--pad); border-radius: 99px; background: rgba(12,14,18,.72); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border: 1px solid rgba(255,255,255,.10); box-shadow: 0 12px 34px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); display: grid; grid-template-columns: repeat(5, 1fr); }
+.tabbar::before { content: ""; position: absolute; top: var(--pad); bottom: var(--pad); left: var(--pad); width: calc((100% - 2 * var(--pad)) / 5); border-radius: 99px; background: linear-gradient(135deg, rgba(29,155,240,.35), rgba(0,186,124,.30)); border: 1px solid rgba(120,220,255,.35); box-shadow: 0 0 22px rgba(29,155,240,.35), inset 0 1px 0 rgba(255,255,255,.18); transition: transform .45s cubic-bezier(.2,.9,.25,1.05), opacity .25s; }
+.tabbar[data-active="search"]::before { transform: translateX(100%); }
+.tabbar[data-active="trending"]::before { transform: translateX(200%); }
+.tabbar[data-active="activity"]::before { transform: translateX(300%); }
+.tabbar[data-active="holding"]::before { transform: translateX(400%); }
+.tabbar[data-active="none"]::before { opacity: 0; }
+.tabbar button { position: relative; z-index: 1; display: grid; place-items: center; border-radius: 99px; color: #71767b; transition: color .25s; -webkit-tap-highlight-color: transparent; }
+.tabbar button:focus { outline: none; }
+.tabbar button:focus-visible { outline: 2px solid rgba(120,220,255,.6); outline-offset: -2px; }
+.tabbar svg { width: 24px; height: 24px; }
+.tabbar button.on { color: #fff; }
+.tabbar button.on svg { stroke-width: 2.4; filter: drop-shadow(0 0 8px rgba(255,255,255,.45)); }
+@media (prefers-reduced-motion: reduce) { .tabbar::before { transition: none; } }
+.fab { position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 41; width: 58px; height: 58px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 30px; font-weight: 300; display: grid; place-items: center; box-shadow: 0 8px 24px rgba(29,155,240,.45); }
 
 /* ---------- modals in the new palette ---------- */
 .modal-card { background: #000; border-color: var(--border); }

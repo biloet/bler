@@ -507,6 +507,8 @@ function render() {
   $$("[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === state.view && !b.classList.contains("brand") && !b.classList.contains("mlogo")));
   $$("#fTabs [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
   $("#fTabs").dataset.active = state.tab;
+  const tb = document.querySelector(".tabbar");
+  if (tb) tb.dataset.active = ["home", "search", "trending", "activity", "holding"].includes(state.view) ? state.view : "none";
 
   // stories: most recently active first
   const storyList = sortForYou(state.all).slice(0, 12);
