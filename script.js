@@ -19,6 +19,8 @@
 
   // ---------- Modals ----------
   function openModal(id) {
+    // Reown AppKit replaces the built-in wallet picker when it's configured
+    if (id === "walletModal" && window.blerAppKit?.ready) { window.blerAppKit.open(); return; }
     const m = document.getElementById(id);
     m.hidden = false;
     document.body.style.overflow = "hidden";
@@ -184,6 +186,21 @@
 
   const state = (window.blerWallet = { provider: null, address: null, chainId: null, kind: null });
   state.ensureChain = () => ensureChain();
+  // Reown AppKit (appkit.js) drives the wallet state through these two hooks
+  state.useExternal = ({ provider, address, chainId, kind = "reown" }) => {
+    state.provider = provider;
+    state.kind = kind;
+    state.address = address || null;
+    state.chainId = chainId ?? null;
+    render();
+  };
+  state.clearExternal = () => {
+    if (state.kind !== "reown") return;
+    state.provider = null;
+    state.address = null;
+    state.chainId = null;
+    render();
+  };
   const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
 
   function formatEth(hexWei) {
@@ -227,6 +244,7 @@
   }
 
   async function ensureChain() {
+    if (state.kind === "reown" && window.blerAppKit) return window.blerAppKit.switchToRobinhood();
     try {
       await state.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN.chainId }] });
     } catch (err) {
@@ -304,8 +322,9 @@
     toast("Disconnected");
   });
 
-  // Restore a previous session without prompting
+  // Restore a previous session without prompting (AppKit restores its own)
   setTimeout(async () => {
+    if (window.BLER_CONFIG?.reownProjectId) return;
     let kind = null;
     try { kind = localStorage.getItem(STORE_KEY); } catch {}
     const provider = kind && findProvider(kind);

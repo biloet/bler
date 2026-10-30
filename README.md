@@ -18,7 +18,8 @@ npx vercel dev
 - `index.html` — app shell: X-style layout (left nav, feed, right column; mobile tab bar) + wallet/launch/trade modals
 - `feed.css` — social feed design (loaded after `styles.css`, which still styles the modals)
 - `feed.js` — the feed: BLER tokens as posts (stories, For you / New launches / Holding, Trending, Activity, Search, About)
-- `script.js` — modals, launch form, wallet connection (EIP-6963 / EIP-1193)
+- `script.js` — modals, launch form, built-in wallet picker (EIP-6963 / EIP-1193)
+- `appkit.js` — Reown AppKit 1.8.24 (WalletConnect + 500 wallets) from jsDelivr; on when `BLER_CONFIG.reownProjectId` is set in `index.html`
 - `pons.js` — Pons V2: launch, market reads, trades, balances, curve buy/sell with quotes + slippage
 - `trade.js` — token page: chart, trades, Buy/Sell, Share on X; shareable at `#/t/<token address>`
 - `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
@@ -61,3 +62,12 @@ Browser reads go through `/api/rpc` first: the public RPC answers rate-limited
 requests (HTTP 429) with a duplicated CORS header (`*,*`) that browsers
 reject, so the same-origin proxy avoids CORS and retries 429s server-side.
 Fallbacks: public RPC directly, then the connected wallet.
+
+## Wallets (Reown AppKit)
+
+1. Create a project at https://cloud.reown.com and copy its **Project ID**.
+2. In the Reown dashboard, add your site's domain (e.g. `bler-iota.vercel.app`) to the allowed domains.
+3. Paste the ID into `index.html`: `window.BLER_CONFIG = { reownProjectId: "…" }`.
+
+Robinhood Chain (4663) is registered as a custom network. With no Project ID,
+or if the CDN can't be reached, the built-in wallet picker is used.

@@ -260,9 +260,15 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script>
+    // Reown AppKit: paste your Project ID from https://cloud.reown.com to enable
+    // WalletConnect + 500 wallets. Leave empty to use the built-in wallet picker.
+    window.BLER_CONFIG = { reownProjectId: "" };
+  </script>
   <script src="script.js"></script>
   <script type="module" src="pons.js"></script>
   <script type="module" src="trade.js"></script>
   <script type="module" src="feed.js"></script>
+  <script type="module" src="appkit.js"></script>
 </body>
 </html>
