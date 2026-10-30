@@ -298,7 +298,7 @@ function story(t, i) {
   const p = st.graduated ? 100 : Math.max(6, (st.progress || 0) * 100);
   const hot = tradesOf(t).some((x) => Date.now() - (x.ts || 0) < 15 * 60e3);
   const chg = pct(st.change);
-  return `<button type="button" class="story" data-open="${esc(t.token)}" title="#${i + 1} $${esc(t.symbol)}"><span class="ring${hot ? " hot" : ""}${i < 3 ? ` top r${i + 1}` : ""}" style="--p:${p}%">${avatar(t, "lg")}</span><span class="rk${i < 3 ? ` r${i + 1}` : ""}">${i + 1}</span><span class="slabel">$${esc(t.symbol)}</span>${chg ? `<span class="schg ${pctCls(st.change)}">${chg}</span>` : ""}</button>`;
+  return `<button type="button" class="story" data-open="${esc(t.token)}" title="#${i + 1} $${esc(t.symbol)}"><span class="ring${hot ? " hot" : ""}" style="--p:${p}%">${avatar(t, "lg")}</span><span class="rk${i === 0 ? " r1" : ""}">${i + 1}</span><span class="slabel">$${esc(t.symbol)}</span>${chg ? `<span class="schg">${chg}</span>` : ""}</button>`;
 }
 
 function activityRows() {
