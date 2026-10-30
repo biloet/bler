@@ -25,6 +25,8 @@ const state = {
   loading: false,
   error: false,
   highlight: null,
+  creator: null, // deployer address when view === "creator"
+  creatorTokens: new Map(), // deployer -> BLER tokens (from chain)
 };
 
 // ---------------------------------------------------------------------------
@@ -246,9 +248,9 @@ function post(t, i) {
   const share = `https://x.com/intent/post?text=${encodeURIComponent(`$${t.symbol}${t.handle ? ` @${t.handle}` : ""} is live on BLER 🚀\nTrade it on Robinhood Chain:`)}&url=${encodeURIComponent(url)}`;
   return `
   <article class="post${t.token && t.token === state.highlight ? " hl" : ""}" data-token="${esc(t.token || "")}" data-hash="${esc(t.hash || "")}">
-    ${avatar(t)}
+    <button type="button" class="av-btn" data-creator="${esc(t.deployer || "")}" aria-label="Creator profile">${avatar(t)}</button>
     <div class="pbody">
-      <div class="phead"><b class="pname">${esc(t.name)}</b>${xbadge(t)}<span class="muted">${t.handle ? `@${esc(t.handle)}` : short(t.token)} · ${ago(t.createdAt)}</span></div>
+      <div class="phead"><button type="button" class="pname" data-creator="${esc(t.deployer || "")}">${esc(t.name)}</button>${xbadge(t)}<span class="muted">${t.handle ? `@${esc(t.handle)}` : short(t.token)} · ${ago(t.createdAt)}</span></div>
       <div class="ptext">${postText(t, st, n)}</div>
       ${pending ? "" : `
       <div class="pcard" data-open="${esc(t.token)}">
@@ -399,7 +401,83 @@ function announceNewTrades() {
   lastTradeTs = newest.x.ts;
 }
 
-const TITLES = { home: "Home", trending: "Trending", activity: "Activity", holding: "Holding", search: "Search", about: "About" };
+// ---------------------------------------------------------------------------
+// creator profiles: #/c/<deployer address>
+// ---------------------------------------------------------------------------
+const CREATOR_HASH = /^#\/c\/(0x[0-9a-fA-F]{40})$/;
+
+function creatorList(addr) {
+  const fromIndex = state.all.filter((t) => sameAddr(t.deployer, addr));
+  const fromChain = state.creatorTokens.get(addr.toLowerCase()) || [];
+  const seen = new Set();
+  return [...fromIndex, ...fromChain].filter((t) => visible(t) && (seen.has(t.token) ? false : (seen.add(t.token), true)));
+}
+
+async function openCreator(addr, { push = true } = {}) {
+  if (!$("#tradeModal").hidden) ui()?.closeModals();
+  state.view = "creator";
+  state.creator = addr;
+  if (push && location.hash !== `#/c/${addr}`) history.replaceState(null, "", `#/c/${addr}`);
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  try {
+    const mine = (await pons().fetchByDeployer(addr)).filter((t) => t.bler);
+    state.creatorTokens.set(addr.toLowerCase(), mine);
+    const list = creatorList(addr);
+    await loadStats(list);
+    render();
+    await loadTrades(list);
+  } catch {}
+  render();
+}
+
+function creatorPage() {
+  const addr = state.creator;
+  const list = creatorList(addr);
+  const lead = list[0] || {};
+  const handleOf = (t) => t.handle || (t.twitter || "").replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//, "").split(/[/?#]/)[0];
+  const handle = list.map(handleOf).find((h) => /^[A-Za-z0-9_]{1,30}$/.test(h)) || "";
+  const name = handle ? `@${handle}` : short(addr);
+  let trades = 0, volume = 0, fees = 0;
+  for (const t of list) for (const x of tradesOf(t)) { trades++; volume += x.eth || 0; fees += x.tax || 0; }
+  const hue = parseInt(addr.slice(2, 6), 16) % 360;
+  const pic = handle ? `<img src="https://unavatar.io/x/${esc(handle)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
+  const url = `${location.origin}${location.pathname}#/c/${addr}`;
+  const share = `https://x.com/intent/post?text=${encodeURIComponent(`${handle ? `@${handle}` : "This creator"} on BLER 🚀 ${list.length} token${list.length === 1 ? "" : "s"} live on Robinhood Chain:`)}&url=${encodeURIComponent(url)}`;
+  const loading = !state.creatorTokens.has(addr.toLowerCase());
+  return `
+  <section class="cprof">
+    <div class="cbanner" style="background:radial-gradient(120% 140% at 0% 0%,hsl(${hue} 85% 55% / .55),transparent 60%),radial-gradient(120% 140% at 100% 100%,hsl(${(hue + 90) % 360} 85% 50% / .45),transparent 60%),#0b0d10"></div>
+    <div class="chead">
+      <div class="cav" style="background:linear-gradient(135deg,hsl(${hue} 80% 60%),hsl(${(hue + 80) % 360} 80% 55%))">${pic}<span>${esc((handle || lead.symbol || "?")[0].toUpperCase())}</span></div>
+      <div class="cacts">
+        <button type="button" class="ghost-btn sm" data-copy="${esc(url)}">Copy link</button>
+        <a class="btn-launch sm" href="${esc(share)}" target="_blank" rel="noopener">Share on 𝕏</a>
+      </div>
+    </div>
+    <div class="cinfo">
+      ${handle
+        ? `<h2>${esc(name)}</h2><a class="muted" href="https://x.com/${esc(handle)}" target="_blank" rel="noopener">x.com/${esc(handle)} ↗</a><button type="button" class="caddr mono" data-copy="${esc(addr)}" title="Copy wallet">${short(addr)} ⧉</button>`
+        : `<button type="button" class="ch2 mono" data-copy="${esc(addr)}" title="Copy wallet">${short(addr)} ⧉</button>`}
+      <p class="muted">Creator on BLER · earns ETH on every trade of their tokens.</p>
+    </div>
+    <div class="cstats">
+      <div><b>${list.length}</b><span>Tokens</span></div>
+      <div><b>${trades}</b><span>Trades</span></div>
+      <div><b>${num(volume)}</b><span>Volume ETH</span></div>
+      <div><b class="up">${num(fees)}</b><span>Fees earned ETH</span></div>
+    </div>
+    <div class="csec">Tokens</div>
+  </section>
+  ${list.length ? list.map((t, i) => post(t, i)).join("") : `<div class="fempty"><b>${loading ? "Loading…" : "No BLER tokens yet"}</b><p>${loading ? "Reading this creator's launches from Robinhood Chain." : "This wallet hasn't launched on BLER."}</p></div>`}`;
+}
+
+window.addEventListener("hashchange", () => {
+  const m = location.hash.match(CREATOR_HASH);
+  if (m) openCreator(m[1], { push: false });
+});
+
+const TITLES = { home: "Home", trending: "Trending", activity: "Activity", holding: "Holding", search: "Search", about: "About", creator: "Profile" };
 
 function render() {
   const posts = $("#posts");
@@ -426,6 +504,7 @@ function render() {
   renderTape();
 
   if (state.view === "about") { posts.innerHTML = ABOUT; empty(null); return; }
+  if (state.view === "creator") { posts.innerHTML = creatorPage(); empty(null); return; }
   if (state.loading && !state.all.length) {
     posts.innerHTML = Array.from({ length: 3 }, () => '<div class="post skel"><div class="av"></div><div class="pbody"><i></i><i></i><i class="big"></i></div></div>').join("");
     empty("loading");
@@ -457,6 +536,7 @@ function render() {
 // ---------------------------------------------------------------------------
 function setView(v) {
   state.view = v;
+  if (v !== "creator" && CREATOR_HASH.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
   if (v === "holding") loadBalances().then(render);
   if (v === "activity" || v === "trending") loadTrades(sortForYou(state.all));
   render();
@@ -474,6 +554,17 @@ document.addEventListener("click", (e) => {
     return render();
   }
   if (e.target.closest("[data-open-wallet-proxy]")) return ui()?.openModal("walletModal");
+  const cr = e.target.closest("[data-creator]");
+  if (cr) {
+    if (cr.dataset.creator) openCreator(cr.dataset.creator);
+    else { const tok = cr.closest(".post")?.dataset.token; if (tok) window.blerTrade?.open(tok); }
+    return;
+  }
+  if (e.target.closest("[data-copy]")) {
+    const v = e.target.closest("[data-copy]").dataset.copy;
+    navigator.clipboard?.writeText(v).then(() => ui()?.toast("Copied"), () => ui()?.toast("Couldn't copy"));
+    return;
+  }
   const tr = e.target.closest("[data-trade]");
   if (tr) {
     const token = tr.closest(".post")?.dataset.token;
@@ -559,6 +650,8 @@ function playIntro() {
 playIntro();
 
 function start() {
+  const m = location.hash.match(CREATOR_HASH);
+  if (m) openCreator(m[1], { push: false });
   renderMobileWallet();
   renderWalletChip();
   refresh();

@@ -268,7 +268,7 @@ export async function getMarket(token, { provider, account } = {}) {
     // price in ETH per whole token (float, display only)
     const priceEth = (Number(quoteReserve) / 1e18) / (Number(tokenReserve) / Number(scale));
     return {
-      token, curve, name, symbol, decimals: Number(decimals), totalSupply,
+      token, curve, name, symbol, decimals: Number(decimals), totalSupply, deployer: lt.deployer,
       logo: ipfsToHttp(info?.[1] || ""), description: info?.[2] || "", socials: info?.[3] || null,
       quoteReserve, tokenReserve, realQuote, sellable, feeBps, creatorTaxBps, snipeBps, threshold,
       tradable: lt.phase === 0 && !graduated, native, phase: lt.phase,
@@ -488,6 +488,8 @@ export async function fetchTrades(m, since) {
     return {
       side: buy ? "buy" : "sell",
       account: buy ? a.recipient : a.seller,
+      fee: Number(a.fee) / 1e18, // curve fee (ETH)
+      tax: Number(a.tax) / 1e18, // creator fee (ETH)
       eth: buy ? ethGross : Number(a.quoteOut) / 1e18,
       tokens,
       price: tokens > 0 ? ethNet / tokens : 0,

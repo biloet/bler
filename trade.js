@@ -46,7 +46,17 @@ function setStatus(text, kind = "") {
 function renderMarket() {
   const m = market;
   $("#tradeTitle").textContent = m.name;
-  $("#tSub").textContent = `$${m.symbol}`;
+  const handle = m.socials?.twitter ? m.socials.twitter.replace(/^https?:\/\/(x|twitter)\.com\//, "").split(/[/?#]/)[0] : "";
+  const sub = $("#tSub");
+  sub.textContent = `$${m.symbol}`;
+  if (m.deployer) {
+    const by = document.createElement("button");
+    by.type = "button";
+    by.className = "t-by";
+    by.dataset.creator = m.deployer;
+    by.textContent = ` · by ${handle ? "@" + handle : m.deployer.slice(0, 6) + "…" + m.deployer.slice(-4)}`;
+    sub.appendChild(by);
+  }
   $("#tCaAddr").textContent = m.token;
   const logo = $("#tLogo");
   logo.textContent = "";
