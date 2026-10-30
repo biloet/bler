@@ -326,3 +326,23 @@ body { background: #000; }
 @media (max-width: 420px) { .cstats { grid-template-columns: repeat(2, 1fr); } }
 .csec { padding: 16px 16px 0; font-weight: 800; font-size: 17px; }
 .ch2 { font-size: 22px; font-weight: 800; color: var(--text); padding: 0; }
+
+/* ---------- hero v2: big-platform polish ---------- */
+.fhero { padding: 44px 22px 30px; }
+.fh-title { margin-top: 0; font-size: clamp(40px, 10vw, 60px); }
+.fh-sub { font-size: 16px; max-width: 400px; margin-top: 16px; }
+.fh-cta { margin-top: 24px; }
+.fh-stats { display: flex; justify-content: center; gap: 0; max-width: 520px; margin: 30px auto 0; padding: 18px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.fh-stats div { flex: 1; padding: 0 10px; border: 0; border-radius: 0; background: none; backdrop-filter: none; }
+.fh-stats div + div { border-left: 1px solid var(--border); }
+.fh-stats b { font-size: clamp(24px, 6vw, 32px); background: linear-gradient(180deg, #fff, #9aa3ab); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.fh-stats span { display: block; margin-top: 4px; font-size: 11px; }
+.fh-trust { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; color: var(--muted); font-size: 13px; }
+.fh-trust li { display: inline-flex; align-items: center; gap: 6px; }
+.fh-trust svg { width: 15px; height: 15px; color: #8b98a5; }
+@media (max-width: 599px) {
+  .fhero { padding: 34px 16px 24px; }
+  .fh-cta { flex-wrap: nowrap; }
+  .fh-cta .btn-launch, .fh-cta .ghost-btn { flex: 1; height: 44px; font-size: 15px; padding: 0 12px; white-space: nowrap; }
+  .fh-stats { margin-top: 24px; padding: 14px 0; }
+}
