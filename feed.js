@@ -208,6 +208,8 @@ function sortForYou(list) {
   // recent activity first, boosted by trade count
   return [...list].sort((a, b) => lastActivity(b) + tradesOf(b).length * 60000 - (lastActivity(a) + tradesOf(a).length * 60000));
 }
+const sortTop = (list) => [...list].sort((a, b) => (state.stats.get(b.token)?.mcapEth ?? -1) - (state.stats.get(a.token)?.mcapEth ?? -1) || tradesOf(b).length - tradesOf(a).length);
+const TROPHY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>`;
 const sortNew = (list) => [...list].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 const sortTrending = (list) => [...list].sort((a, b) => (state.stats.get(b.token)?.change ?? -9) - (state.stats.get(a.token)?.change ?? -9) || tradesOf(b).length - tradesOf(a).length);
 
@@ -291,11 +293,12 @@ function post(t, i) {
   </article>`;
 }
 
-function story(t) {
+function story(t, i) {
   const st = state.stats.get(t.token) || {};
   const p = st.graduated ? 100 : Math.max(6, (st.progress || 0) * 100);
   const hot = tradesOf(t).some((x) => Date.now() - (x.ts || 0) < 15 * 60e3);
-  return `<button type="button" class="story" data-open="${esc(t.token)}" title="$${esc(t.symbol)}"><span class="ring${hot ? " hot" : ""}" style="--p:${p}%">${avatar(t, "lg")}</span><span class="slabel">$${esc(t.symbol)}</span></button>`;
+  const chg = pct(st.change);
+  return `<button type="button" class="story" data-open="${esc(t.token)}" title="#${i + 1} $${esc(t.symbol)}"><span class="ring${hot ? " hot" : ""}${i < 3 ? ` top r${i + 1}` : ""}" style="--p:${p}%">${avatar(t, "lg")}</span><span class="rk${i < 3 ? ` r${i + 1}` : ""}">${i + 1}</span><span class="slabel">$${esc(t.symbol)}</span>${chg ? `<span class="schg ${pctCls(st.change)}">${chg}</span>` : ""}</button>`;
 }
 
 function activityRows() {
@@ -510,9 +513,9 @@ function render() {
   const tb = document.querySelector(".tabbar");
   if (tb) tb.dataset.active = ["home", "search", "trending", "activity", "holding"].includes(state.view) ? state.view : "none";
 
-  // stories: most recently active first
-  const storyList = sortForYou(state.all).slice(0, 12);
-  $("#stories").innerHTML = `<button type="button" class="story" data-open-launch><span class="ring add"><span class="av lg plus">+</span></span><span class="slabel">Launch</span></button>` + storyList.map(story).join("");
+  // stories: top profiles ranked by market cap
+  const storyList = sortTop(state.all).slice(0, 12);
+  $("#stories").innerHTML = `<div class="shead">${TROPHY}Top profiles</div><div class="srow"><button type="button" class="story" data-open-launch><span class="ring add"><span class="av lg plus">+</span></span><span class="slabel">Launch</span></button>${storyList.map(story).join("")}</div>`;
 
   // right column: trending
   $("#trend").innerHTML = sortTrending(state.all).slice(0, 5).map((t) => {
