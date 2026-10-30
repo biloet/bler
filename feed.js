@@ -66,6 +66,11 @@ function avatar(t, size = "") {
   const img = logo ? `<img src="${esc(logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
   return `<div class="av ${size}" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${img}<span>${esc((t.symbol || "?")[0].toUpperCase())}</span></div>`;
 }
+const ICON = {
+  trades: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  curve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20c6 0 9-4 11-9s4-7 7-7"/><circle cx="21" cy="4" r="1.6"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>',
+};
 const xbadge = (t) => (t.handle ? `<span class="xb">${t.platform === "fomo" ? "fomo" : "𝕏"}</span>` : "");
 
 // ---------------------------------------------------------------------------
@@ -109,6 +114,8 @@ async function loadTrades(list) {
         const d = await pons().getTradesCached({ token: t.token, curve: t.curve, decimals: 18 }, { maxAgeMs: 25000 });
         state.trades.set(t.token, d.trades);
         render();
+        clearTimeout(loadTrades.t);
+        loadTrades.t = setTimeout(announceNewTrades, 400);
       } catch {}
     }
   };
@@ -256,10 +263,10 @@ function post(t, i) {
         </div>
       </div>
       <div class="pacts">
-        <span title="Trades">📊 ${n}</span>
-        <span title="Bonding curve">🎓 ${st.graduated ? "Graduated" : st.progress != null ? `${(st.progress * 100).toFixed(1)}%` : "—"}</span>
+        <span class="pa" title="Trades">${ICON.trades}<b>${n}</b> trade${n === 1 ? "" : "s"}</span>
+        <span class="pa" title="Bonding curve → Uniswap V4">${ICON.curve}${st.graduated ? "Graduated" : `Curve <b>${st.progress != null ? `${(st.progress * 100).toFixed(1)}%` : "—"}</b>`}</span>
         ${holdTxt}
-        <a href="${esc(share)}" target="_blank" rel="noopener" title="Share on X" class="act">↗ Share</a>
+        <a href="${esc(share)}" target="_blank" rel="noopener" title="Share on X" class="pa act">${ICON.share}Share</a>
       </div>`}
     </div>
   </article>`;
@@ -268,7 +275,8 @@ function post(t, i) {
 function story(t) {
   const st = state.stats.get(t.token) || {};
   const p = st.graduated ? 100 : Math.max(6, (st.progress || 0) * 100);
-  return `<button type="button" class="story" data-open="${esc(t.token)}" title="$${esc(t.symbol)}"><span class="ring" style="--p:${p}%">${avatar(t, "lg")}</span><span class="slabel">$${esc(t.symbol)}</span></button>`;
+  const hot = tradesOf(t).some((x) => Date.now() - (x.ts || 0) < 15 * 60e3);
+  return `<button type="button" class="story" data-open="${esc(t.token)}" title="$${esc(t.symbol)}"><span class="ring${hot ? " hot" : ""}" style="--p:${p}%">${avatar(t, "lg")}</span><span class="slabel">$${esc(t.symbol)}</span></button>`;
 }
 
 function activityRows() {
@@ -277,9 +285,11 @@ function activityRows() {
   rows.sort((a, b) => (b.x.ts || 0) - (a.x.ts || 0));
   return rows.slice(0, 50).map(({ t, x }) => `
     <button type="button" class="arow" data-open="${esc(t.token)}">
-      ${avatar(t, "sm")}
-      <span class="atext"><b>${short(x.account)}</b> ${x.side === "buy" ? '<span class="up">bought</span>' : '<span class="down">sold</span>'} ${num(x.eth)} ETH of <span class="tk">$${esc(t.symbol)}</span></span>
-      <span class="muted">${ago(x.ts)}</span>
+      ${avatar(t, "md")}
+      <span class="atext">
+        <span class="aline"><b class="asym">$${esc(t.symbol)}</b><span class="side ${x.side}">${x.side === "buy" ? "Buy" : "Sell"}</span><b class="aeth">${num(x.eth)} ETH</b></span>
+        <span class="aline muted"><span class="mono">${short(x.account)}</span> · ${num(x.tokens)} ${esc(t.symbol)} · ${ago(x.ts)} ago</span>
+      </span>
     </button>`).join("");
 }
 
@@ -326,6 +336,69 @@ function currentList() {
   return sortForYou(base);
 }
 
+// ---------------------------------------------------------------------------
+// cinematic bits: entrance once per post, platform stats, live tape, toasts
+// ---------------------------------------------------------------------------
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const seenPosts = new Set();
+let lastTradeTs = null;
+
+function platformStats() {
+  let trades = 0, volume = 0;
+  for (const t of state.all) for (const x of tradesOf(t)) { trades++; volume += x.eth || 0; }
+  return { tokens: state.all.length, trades, volume };
+}
+
+function countTo(el, value, fmt) {
+  const from = Number(el.dataset.v || 0);
+  el.dataset.v = value;
+  if (reduced || from === value) { el.textContent = fmt(value); return; }
+  const t0 = performance.now(), dur = 1200;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(from + (value - from) * e);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function renderHero() {
+  const hero = $("#fHero");
+  hero.hidden = !(state.view === "home" && state.tab === "foryou");
+  if (hero.hidden || !state.all.length) return;
+  const st = platformStats();
+  countTo(hero.querySelector('[data-stat="tokens"]'), st.tokens, (v) => Math.round(v).toLocaleString("en-US"));
+  countTo(hero.querySelector('[data-stat="trades"]'), st.trades, (v) => Math.round(v).toLocaleString("en-US"));
+  countTo(hero.querySelector('[data-stat="volume"]'), st.volume, (v) => v.toFixed(v >= 10 ? 1 : 3));
+}
+
+function renderTape() {
+  const tape = $("#tape");
+  const rows = [];
+  for (const t of state.all) for (const x of tradesOf(t)) rows.push({ t, x });
+  rows.sort((a, b) => (b.x.ts || 0) - (a.x.ts || 0));
+  const show = state.view === "home" && rows.length > 0;
+  tape.hidden = !show;
+  if (!show) return;
+  const key = rows.slice(0, 20).map((r) => r.x.hash + r.x.i).join();
+  if (tape.dataset.key === key) return; // unchanged — don't restart the scroll
+  tape.dataset.key = key;
+  const items = rows.slice(0, 20).map(({ t, x }) =>
+    `<button type="button" class="ti" data-open="${esc(t.token)}"><span class="side ${x.side}">${x.side === "buy" ? "Buy" : "Sell"}</span><b>$${esc(t.symbol)}</b><span class="mono">${num(x.eth)} ETH</span><span class="muted">${ago(x.ts)}</span></button>`).join("");
+  $("#tapeTrack").innerHTML = items + items; // duplicated for a seamless loop
+  $("#tapeTrack").style.animationDuration = `${Math.max(20, rows.slice(0, 20).length * 4)}s`;
+}
+
+function announceNewTrades() {
+  let newest = null;
+  for (const t of state.all) for (const x of tradesOf(t)) if (!newest || (x.ts || 0) > (newest.x.ts || 0)) newest = { t, x };
+  if (!newest) return;
+  if (lastTradeTs != null && newest.x.ts > lastTradeTs + 1000) {
+    ui()?.toast(`${newest.x.side === "buy" ? "🟢" : "🔴"} ${short(newest.x.account)} ${newest.x.side === "buy" ? "bought" : "sold"} ${num(newest.x.eth)} ETH of $${newest.t.symbol}`);
+  }
+  lastTradeTs = newest.x.ts;
+}
+
 const TITLES = { home: "Home", trending: "Trending", activity: "Activity", holding: "Holding", search: "Search", about: "About" };
 
 function render() {
@@ -349,6 +422,8 @@ function render() {
   }).join("") || '<p class="muted small rpad">No BLER tokens yet.</p>';
 
   $("#fMore").hidden = !(state.view === "home" && state.tab !== "holding" && state.nextWindow >= 0 && state.all.length);
+  renderHero();
+  renderTape();
 
   if (state.view === "about") { posts.innerHTML = ABOUT; empty(null); return; }
   if (state.loading && !state.all.length) {
@@ -366,7 +441,14 @@ function render() {
   const holdingView = state.view === "holding" || (state.view === "home" && state.tab === "holding");
   if (holdingView && !w?.address) { posts.innerHTML = ""; empty("connect"); return; }
   const list = currentList();
-  posts.innerHTML = list.map(post).join("");
+  let k = 0;
+  posts.innerHTML = list.map((t, i) => {
+    const key = t.token || t.hash;
+    const html = post(t, i);
+    if (reduced || seenPosts.has(key)) return html;
+    seenPosts.add(key);
+    return html.replace('<article class="post', `<article style="--d:${(k++ * 0.07).toFixed(2)}s" class="enter post`);
+  }).join("");
   empty(list.length ? null : state.error ? "error" : state.view === "search" && state.query ? "search" : holdingView ? "holding" : "none");
 }
 
@@ -391,7 +473,7 @@ document.addEventListener("click", (e) => {
     if (state.tab === "holding") loadBalances().then(render);
     return render();
   }
-  if (e.target.closest("[data-open-wallet-proxy]")) return document.querySelector("[data-open-wallet]")?.click();
+  if (e.target.closest("[data-open-wallet-proxy]")) return ui()?.openModal("walletModal");
   const tr = e.target.closest("[data-trade]");
   if (tr) {
     const token = tr.closest(".post")?.dataset.token;
@@ -435,10 +517,27 @@ function renderMobileWallet() {
   b.textContent = w?.address ? w.address.slice(2, 4).toUpperCase() : "👛";
   b.classList.toggle("on", !!w?.address);
 }
-$("#mWallet").addEventListener("click", () => document.querySelector("[data-open-wallet]")?.click());
+$("#mWallet").addEventListener("click", () => ui()?.openModal("walletModal"));
+
+// sidebar account chip (X-style account switcher)
+function renderWalletChip() {
+  const w = window.blerWallet, chip = $("#meChip");
+  if (!chip) return;
+  if (!w?.address) {
+    chip.classList.remove("on");
+    chip.innerHTML = '<span class="me-av">👛</span><span class="me-txt"><b>Connect wallet</b><span class="muted">Tap to connect</span></span>';
+    return;
+  }
+  const ok = w.chainId === pons()?.CHAIN_ID;
+  const hue = parseInt(w.address.slice(2, 6), 16) % 360;
+  chip.classList.add("on");
+  chip.innerHTML = `<span class="me-av" style="background:linear-gradient(135deg,hsl(${hue} 80% 60%),hsl(${(hue + 80) % 360} 80% 55%))">${w.address.slice(2, 4).toUpperCase()}</span><span class="me-txt"><b class="mono">${short(w.address)}</b><span class="${ok ? "up" : "down"}">${ok ? "● Robinhood Chain" : "⚠ Wrong network"}</span></span><span class="me-dots">⋯</span>`;
+}
+$("#meChip").addEventListener("click", () => ui()?.openModal("walletModal"));
 
 window.addEventListener("bler:wallet", () => {
   renderMobileWallet();
+  renderWalletChip();
   state.balancesFor = null;
   if (state.view === "holding" || state.tab === "holding") loadBalances().then(render);
 });
@@ -448,8 +547,20 @@ window.addEventListener("bler:launched", (e) => {
   setTimeout(() => refresh(true), 3000);
 });
 
+function playIntro() {
+  const intro = $("#intro");
+  let seen = false;
+  try { seen = !!sessionStorage.getItem("bler-intro"); sessionStorage.setItem("bler-intro", "1"); } catch {}
+  if (seen || reduced) { intro.remove(); return; }
+  intro.classList.add("play");
+  // safety net: never leave the intro up if animations are paused
+  setTimeout(() => intro.remove(), 2600);
+}
+playIntro();
+
 function start() {
   renderMobileWallet();
+  renderWalletChip();
   refresh();
   setInterval(() => { if (!document.hidden) refresh(true); }, 30000);
 }
