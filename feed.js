@@ -506,6 +506,7 @@ function render() {
   $("#stories").hidden = !(state.view === "home" && state.tab !== "holding");
   $$("[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === state.view && !b.classList.contains("brand") && !b.classList.contains("mlogo")));
   $$("#fTabs [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
+  $("#fTabs").dataset.active = state.tab;
 
   // stories: most recently active first
   const storyList = sortForYou(state.all).slice(0, 12);
