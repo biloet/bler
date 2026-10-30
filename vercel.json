@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/t/:addr", "destination": "/api/t?addr=:addr" }
+  ],
+  "functions": {
+    "api/og.js": { "includeFiles": "assets/logo.svg", "maxDuration": 20 },
+    "api/t.js": { "maxDuration": 15 }
+  }
+}

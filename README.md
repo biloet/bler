@@ -22,6 +22,10 @@ npx vercel dev
 - `pons.js` — Pons V2: launch, market reads, trades, balances, curve buy/sell with quotes + slippage
 - `trade.js` — token page: chart, trades, Buy/Sell, Share on X; shareable at `#/t/<token address>`
 - `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
+- `api/t.js` — share page `/t/<token>`: Open Graph / Twitter Card tags, then redirects to `#/t/<token>`
+- `api/og.js` — 1200×630 PNG share card per token (`@vercel/og`): logo, price, market cap, change, trades, real chart
+- `api/_chain.js` — shared server-side chain reads for the share card
+- `vercel.json` — rewrite `/t/:addr` → `api/t`, function settings
 - `api/bler.js` — Vercel function indexing BLER launches per 500k-block window (finished windows CDN-cached for a year)
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo

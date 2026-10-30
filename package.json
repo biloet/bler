@@ -3,6 +3,7 @@
   "private": true,
   "description": "BLER — launchpad for X and fomo profiles on Robinhood Chain, built on Pons V2",
   "dependencies": {
+    "@vercel/og": "0.11.1",
     "viem": "2.21.0"
   }
 }

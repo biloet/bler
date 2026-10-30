@@ -335,7 +335,8 @@ window.addEventListener("resize", () => { if (!$("#tradeModal").hidden) renderCh
 
 // Shareable token links: #/t/<address>
 const TOKEN_HASH = /^#\/t\/(0x[0-9a-fA-F]{40})$/;
-const tokenUrl = (token) => `${location.origin}${location.pathname}#/t/${token}`;
+// shareable link: /t/<address> serves link-preview tags, then opens #/t/<address>
+const tokenUrl = (token) => `${location.origin}/t/${token}`;
 
 function setShare(m) {
   const handle = m.socials?.twitter ? m.socials.twitter.replace(/^https?:\/\/(x|twitter)\.com\//, "").split(/[/?#]/)[0] : "";

@@ -244,7 +244,7 @@ function post(t, i) {
   const pending = t.status === "pending";
   const hold = state.balances.get(t.token);
   const holdTxt = hold && hold > 0n ? `<span class="hold">You hold ${num(Number(hold) / 1e18)}</span>` : "";
-  const url = `${location.origin}${location.pathname}#/t/${t.token}`;
+  const url = `${location.origin}/t/${t.token}`;
   const share = `https://x.com/intent/post?text=${encodeURIComponent(`$${t.symbol}${t.handle ? ` @${t.handle}` : ""} is live on BLER 🚀\nTrade it on Robinhood Chain:`)}&url=${encodeURIComponent(url)}`;
   return `
   <article class="post${t.token && t.token === state.highlight ? " hl" : ""}" data-token="${esc(t.token || "")}" data-hash="${esc(t.hash || "")}">
