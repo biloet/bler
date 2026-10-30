@@ -466,11 +466,15 @@ export async function fetchTrades(m, since) {
     launchTs = Number((await c.getBlock({ blockNumber: launchBlock })).timestamp) * 1000;
   }
   const fromBlock = since ? since.toBlock + 1n : launchBlock;
+  // One event per query: the RPC allows 10M blocks for a single topic but only
+  // 100k when several event signatures are OR-ed together.
   let logs = [];
   for (let from = fromBlock; from <= head; from += LOG_SPAN) {
     const to = from + LOG_SPAN - 1n < head ? from + LOG_SPAN - 1n : head;
-    logs = logs.concat(await c.getLogs({ address: m.curve, events: tradeEvents, fromBlock: from, toBlock: to }));
+    const parts = await Promise.all(tradeEvents.map((event) => c.getLogs({ address: m.curve, event, fromBlock: from, toBlock: to })));
+    logs = logs.concat(...parts);
   }
+  logs.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1));
   // timestamps: interpolate between launch block and head (blocks are ~0.1s)
   const span = Number(head - launchBlock) || 1;
   const tsOf = (b) => launchTs + ((headTs - launchTs) * Number(b - launchBlock)) / span;

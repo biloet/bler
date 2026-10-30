@@ -797,3 +797,12 @@ h1, h2, h3 { text-wrap: balance; }
 .t-tok { grid-area: tok; font-family: var(--mono); font-size: 12px; text-align: right; }
 .t-who { grid-area: who; font-family: var(--mono); font-size: 11px; }
 .t-trades-empty { padding: 8px 4px; }
+
+/* UI polish */
+@media (min-width: 640px) {
+  #launches { grid-template-columns: repeat(auto-fit, minmax(300px, 360px)); justify-content: center; }
+  .modal-card.trade-card { max-width: 520px; }
+  .t-chart-box { height: 180px; }
+}
+#launches .p-card { min-height: 78px; }
+.t-trades-empty { text-align: center; padding: 14px 4px; }
