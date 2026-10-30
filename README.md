@@ -19,10 +19,11 @@ npx vercel dev
 - `styles.css` — styling (dark, cinematic, mobile-first)
 - `script.js` — UI, Explore list, wallet connection (EIP-6963 / EIP-1193)
 - `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
-- `trade.js` — Buy/Sell panel (opened from Explore or by pasting a token address)
+- `trade.js` — token page: chart, trades, Buy/Sell, Share on X; shareable at `#/t/<token address>`
 - `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
 - `api/bler.js` — Vercel function indexing BLER launches per 500k-block window (finished windows CDN-cached for a year)
-- `explore.js` — Explore: BLER tokens only (all, or the connected wallet's)
+- `explore.js` — Explore: BLER tokens only (all / yours), market cap, change since launch, sparklines, sort
+- `hero.js` — hero showcase cycling through the most active BLER tokens with their real chart
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
 

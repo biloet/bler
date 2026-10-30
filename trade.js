@@ -193,8 +193,7 @@ async function loadTrades() {
   const m = market;
   tradesBusy = true;
   try {
-    const since = tradeData && tradeData.token === m.token ? tradeData : undefined;
-    const res = await pons().fetchTrades(m, since);
+    const res = await pons().getTradesCached(m, { maxAgeMs: 4000 });
     if (market?.token !== m.token) return; // user switched tokens meanwhile
     tradeData = { ...res, token: m.token };
     renderChart();
@@ -324,7 +323,18 @@ function renderTrades() {
 }
 window.addEventListener("resize", () => { if (!$("#tradeModal").hidden) renderChart(); });
 
-async function open(addr) {
+// Shareable token links: #/t/<address>
+const TOKEN_HASH = /^#\/t\/(0x[0-9a-fA-F]{40})$/;
+const tokenUrl = (token) => `${location.origin}${location.pathname}#/t/${token}`;
+
+function setShare(m) {
+  const handle = m.socials?.twitter ? m.socials.twitter.replace(/^https?:\/\/(x|twitter)\.com\//, "").split(/[/?#]/)[0] : "";
+  const who = handle ? ` @${handle}` : "";
+  const text = `$${m.symbol}${who} is live on BLER 🚀\nTrade it on Robinhood Chain:`;
+  $("#tShareX").href = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(tokenUrl(m.token))}`;
+}
+
+async function open(addr, { side: startSide = "buy", justLaunched = false } = {}) {
   if (!pons()) return ui().toast("Still loading — try again in a second");
   if (!isAddress(addr)) return ui().toast("That doesn't look like a token address");
   const token = getAddress(addr);
@@ -337,8 +347,11 @@ async function open(addr) {
   $("#tCaCopy").textContent = "Copy";
   $("#tLogo").textContent = "";
   setStatus("");
-  setSide("buy");
+  setSide(startSide === "sell" ? "sell" : "buy");
   tradeData = null;
+  $("#tShareX").classList.toggle("pulse", justLaunched);
+  $("#tShareX").removeAttribute("href");
+  if (location.hash !== `#/t/${token}`) history.replaceState(null, "", `#/t/${token}`);
   $("#tSvg").innerHTML = "";
   $("#tChartMsg").hidden = false;
   $("#tChartMsg").textContent = "Loading chart…";
@@ -353,6 +366,8 @@ async function open(addr) {
     setStatus(err?.message || "Failed to read the token from Robinhood Chain", "err");
     return;
   }
+  setShare(market);
+  if (justLaunched) setStatus("🎉 Your token is live! Share it on X to get your first buyers.", "ok");
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
     if ($("#tradeModal").hidden) return clearInterval(refreshTimer);
@@ -443,5 +458,26 @@ $("#lookupForm").addEventListener("submit", (e) => {
   e.preventDefault();
   open(new FormData(e.target).get("addr").trim());
 });
+
+$("#tCopyLink").addEventListener("click", async () => {
+  if (!market) return;
+  const ok = await copyText(tokenUrl(market.token));
+  ui().toast(ok ? "Link copied — paste it anywhere" : "Couldn't copy the link");
+});
+
+// Closing the panel clears the token link from the URL
+new MutationObserver(() => {
+  if ($("#tradeModal").hidden && TOKEN_HASH.test(location.hash)) {
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}).observe($("#tradeModal"), { attributes: true, attributeFilter: ["hidden"] });
+
+function openFromHash() {
+  const m = location.hash.match(TOKEN_HASH);
+  if (m && (!market || market.token.toLowerCase() !== m[1].toLowerCase() || $("#tradeModal").hidden)) open(m[1]);
+}
+window.addEventListener("hashchange", openFromHash);
+if (window.blerPons) openFromHash();
+else window.addEventListener("bler:pons-ready", openFromHash, { once: true });
 
 window.blerTrade = { open };

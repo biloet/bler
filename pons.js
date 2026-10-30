@@ -503,27 +503,60 @@ export async function fetchTrades(m, since) {
   };
 }
 
-/** Live curve state for a list of tokens: Map(token -> { progress, graduated }). */
+/**
+ * Live market numbers for a list of tokens ({ token, curve }):
+ * Map(token -> { progress, graduated, priceEth, mcapEth, change, launchPrice })
+ * change = price now vs launch price (all supply starts on the curve).
+ */
 export async function fetchCurveStats(items) {
   const out = new Map();
   if (!items.length) return out;
   const c = readClient();
+  const N = 6;
   const res = await c.multicall({
     contracts: items.flatMap((t) => [
       { address: t.curve, abi: curveAbi, functionName: "realQuoteReserve" },
       { address: t.curve, abi: curveAbi, functionName: "graduationThreshold" },
       { address: t.curve, abi: curveAbi, functionName: "graduated" },
+      { address: t.curve, abi: curveAbi, functionName: "getReserves" },
+      { address: t.token, abi: tokenAbi, functionName: "totalSupply" },
+      { address: t.token, abi: tokenAbi, functionName: "decimals" },
     ]),
     allowFailure: true,
   });
   items.forEach((t, i) => {
-    const [real, thr, grad] = res.slice(i * 3, i * 3 + 3).map((x) => (x.status === "success" ? x.result : null));
-    out.set(t.token, {
-      graduated: !!grad,
-      progress: real != null && thr ? Math.min(1, Number((real * 10000n) / thr) / 10000) : null,
-    });
+    const [real, thr, grad, reserves, supply, dec] = res.slice(i * N, i * N + N).map((x) => (x.status === "success" ? x.result : null));
+    const st = { graduated: !!grad, progress: real != null && thr ? Math.min(1, Number((real * 10000n) / thr) / 10000) : null };
+    if (reserves && supply && real != null) {
+      const scale = 10 ** Number(dec ?? 18);
+      const [q, tok] = reserves;
+      st.priceEth = (Number(q) / 1e18) / (Number(tok) / scale);
+      st.mcapEth = st.priceEth * (Number(supply) / scale);
+      st.launchPrice = (Number(q - real) / 1e18) / (Number(supply) / scale);
+      st.change = st.launchPrice > 0 ? st.priceEth / st.launchPrice - 1 : 0;
+    }
+    out.set(t.token, st);
   });
   return out;
+}
+
+// Shared trade cache (hero, Explore sparklines, trade panel). Refreshes
+// incrementally; entries younger than maxAgeMs are returned as-is.
+const tradeCache = new Map();
+export async function getTradesCached(m, { maxAgeMs = 15000 } = {}) {
+  const key = m.token.toLowerCase();
+  const hit = tradeCache.get(key);
+  if (hit && Date.now() - hit.at < maxAgeMs) return hit.data;
+  if (hit?.pending) return hit.pending;
+  const pending = fetchTrades({ decimals: 18, ...m }, hit?.data).then((data) => {
+    tradeCache.set(key, { data, at: Date.now() });
+    return data;
+  }).catch((err) => {
+    if (hit) tradeCache.set(key, hit); else tradeCache.delete(key);
+    throw err;
+  });
+  tradeCache.set(key, { ...(hit || {}), pending });
+  return pending;
 }
 
 /** Resolve a launch tx hash: { status: "pending" | "failed" | "live", token? }. */
@@ -536,5 +569,5 @@ export async function checkLaunchTx(hash) {
   return log ? { status: "live", token: log.args.token, curve: log.args.curve } : { status: "failed" };
 }
 
-window.blerPons = { readStatus, launchToken, fetchTrades, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
+window.blerPons = { readStatus, launchToken, fetchTrades, getTradesCached, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));

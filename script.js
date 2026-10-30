@@ -115,7 +115,9 @@
       setStatus("");
       closeModals();
       e.target.reset();
-      document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
+      // open the new token's page right away so it can be shared
+      if (window.blerTrade) window.blerTrade.open(res.token, { justLaunched: true });
+      else document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
       toast(`$${symbol} is live 🚀`);
     } catch (err) {
       setStatus(err?.message || "Launch failed", "err");
@@ -124,63 +126,6 @@
       btn.disabled = false;
     }
   });
-
-  $$(".btn-buy, .btn-sell").forEach((b) =>
-    b.addEventListener("click", () =>
-      document.getElementById("explore").scrollIntoView({ behavior: "smooth" }) ||
-      toast("Pick a token in Explore — or paste a token address")
-    )
-  );
-
-  // ---------- Hero chart (live-ish random walk) ----------
-  const W = 600, H = 200, N = 60;
-  let series = [];
-  let v = 40;
-  for (let i = 0; i < N; i++) {
-    v += (Math.random() - 0.38) * 6;
-    v = Math.max(8, Math.min(95, v));
-    series.push(v);
-  }
-  let mcap = 84219;
-
-  function pathFor(data) {
-    const min = Math.min(...data) - 5, max = Math.max(...data) + 5;
-    const pts = data.map((d, i) => [
-      (i / (data.length - 1)) * W,
-      H - ((d - min) / (max - min)) * (H - 20) - 10,
-    ]);
-    let d = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) {
-      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
-      const cx = (x0 + x1) / 2;
-      d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`;
-    }
-    return { line: d, area: `${d} L${W},${H} L0,${H} Z` };
-  }
-
-  function renderChart() {
-    const { line, area } = pathFor(series);
-    $("#chartLine").setAttribute("d", line);
-    $("#chartArea").setAttribute("d", area);
-  }
-  renderChart();
-
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!reduced) {
-    setInterval(() => {
-      const last = series[series.length - 1];
-      const next = Math.max(8, Math.min(95, last + (Math.random() - 0.42) * 6));
-      series = [...series.slice(1), next];
-      renderChart();
-
-      mcap = Math.max(1000, Math.round(mcap * (1 + (next - last) / 400)));
-      $("#mcap").textContent = "$" + mcap.toLocaleString("en-US");
-      const pct = ((next - series[0]) / (series[0] + 50)) * 100;
-      const ch = $("#change");
-      ch.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
-      ch.className = "change " + (pct >= 0 ? "up" : "down");
-    }, 1400);
-  }
 
   // ---------- Bottom nav active state ----------
   const sections = ["home", "explore", "how"].map((id) => document.getElementById(id));

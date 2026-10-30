@@ -21,9 +21,11 @@ const state = {
   nextWindow: null, // next (older) window to load; -1 when exhausted
   mine: null,
   mineFor: null,
-  stats: new Map(), // token -> { progress, graduated }
+  stats: new Map(), // token -> { progress, graduated, priceEth, mcapEth, change }
+  sparks: new Map(), // token -> { prices: number[], count }
   error: false,
 };
+let sort = "new";
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const GRADS = [["#ff8a00", "#e52e71"], ["#00c6ff", "#0072ff"], ["#7f00ff", "#e100ff"], ["#11998e", "#38ef7d"], ["#f7971e", "#ffd200"], ["#fc466b", "#3f5efb"]];
@@ -41,6 +43,21 @@ const localLaunches = () => {
 const saveLocal = (list) => { try { localStorage.setItem(LAUNCH_KEY, JSON.stringify(list)); } catch {} };
 const sameAddr = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
+const fmt = (n) => {
+  if (n == null || !isFinite(n)) return "—";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  if (n >= 100) return n.toFixed(0);
+  if (n >= 1) return n.toFixed(2);
+  return n.toPrecision(2);
+};
+
+function sparkSvg(prices, up) {
+  if (!prices || prices.length < 2) return '<svg class="spark" viewBox="0 0 80 28" aria-hidden="true"><line x1="0" y1="14" x2="80" y2="14" stroke="rgba(255,255,255,.15)" stroke-width="1.5" stroke-dasharray="3 3"/></svg>';
+  const lo = Math.min(...prices), hi = Math.max(...prices), r = hi - lo || hi * 0.05 || 1;
+  const pts = prices.map((p, i) => `${((i / (prices.length - 1)) * 80).toFixed(1)},${(26 - ((p - lo) / r) * 24).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 80 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${up ? "#3ee08f" : "#ff5a5f"}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
 function card(t) {
   const g = GRADS[(t.symbol || "?").length % GRADS.length];
   const initial = esc((t.symbol || "?")[0]?.toUpperCase());
@@ -48,27 +65,40 @@ function card(t) {
   const img = logo ? `<img src="${esc(logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
   const st = state.stats.get(t.token) || t;
   const pending = t.status === "pending";
-  const badge = pending ? '<span class="status-draft">Confirming</span>' : "";
+  const badge = pending ? '<span class="status-draft">Confirming</span>' : st.graduated ? '<span class="status-live">Graduated</span>' : "";
   const src = t.handle
     ? `<span class="src src-${t.platform === "fomo" ? "fomo" : "x"}">${t.platform === "fomo" ? "fomo" : "𝕏"}</span> @${esc(t.handle)}`
     : esc(t.name);
-  const prog = pending ? "" : st.graduated ? "Graduated" : st.progress != null ? `Curve ${(st.progress * 100).toFixed(1)}%` : "";
+  const up = (st.change ?? 0) >= 0;
+  const flat = st.change != null && Math.abs(st.change) < 0.0005;
+  const change = st.change == null ? "" : flat
+    ? '<span class="chg flat">0.0%</span>'
+    : `<span class="chg ${up ? "up" : "down"}">${up ? "+" : ""}${(st.change * 100).toFixed(1)}%</span>`;
+  const mc = st.mcapEth != null ? `MC ${fmt(st.mcapEth)} ETH` : "";
   const bar = !pending && st.progress != null && !st.graduated
-    ? `<div class="mini-bar"><i style="width:${Math.max(2, st.progress * 100).toFixed(1)}%"></i></div>` : "";
+    ? `<div class="mini-bar" title="Bonding curve ${(st.progress * 100).toFixed(1)}%"><i style="width:${Math.max(2, st.progress * 100).toFixed(1)}%"></i></div>` : "";
+  const sp = state.sparks.get(t.token);
   const key = t.token || t.hash;
   return `
-    <div class="p-card card${key && key === highlight ? " just-launched" : ""}" data-token="${esc(t.token || "")}" data-hash="${esc(t.hash || "")}">
-      <div class="avatar" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${img}${initial}</div>
+    <div class="p-card card x-card${key && key === highlight ? " just-launched" : ""}" data-token="${esc(t.token || "")}" data-hash="${esc(t.hash || "")}">
+      <div class="avatar round" style="background:linear-gradient(135deg,${g[0]},${g[1]})">${img}${initial}</div>
       <div class="p-info">
         <div class="p-name">$${esc(t.symbol)} ${badge}</div>
         <div class="p-handle">${src}</div>
+        <div class="p-meta">${pending ? "Confirming…" : `${mc}${mc ? " · " : ""}${timeAgo(t.createdAt)}`}</div>
         ${bar}
       </div>
       <div class="p-right">
-        <div class="p-time">${timeAgo(t.createdAt)}</div>
-        <div class="p-creator">${esc(prog)}</div>
+        ${pending ? "" : sparkSvg(sp?.prices, up)}
+        ${change}
       </div>
     </div>`;
+}
+
+function sorted(list) {
+  if (sort === "new") return list;
+  const val = (t) => sort === "mcap" ? state.stats.get(t.token)?.mcapEth ?? -1 : state.sparks.get(t.token)?.count ?? -1;
+  return [...list].sort((a, b) => val(b) - val(a));
 }
 
 function showEmpty(kind) {
@@ -104,12 +134,13 @@ function render() {
   const w = window.blerWallet;
   let list;
   if (tab === "all") {
-    list = [...pendingFor(state.all), ...state.all];
+    list = [...pendingFor(state.all), ...sorted(state.all)];
   } else {
     const chain = state.mineFor && sameAddr(state.mineFor, w?.address) ? state.mine || [] : [];
     list = w?.address ? [...pendingFor(chain, w.address), ...chain] : [];
   }
   list = list.filter(visible);
+  $("#exSort").hidden = tab !== "all";
   const grid = $("#launches");
   if (loading && !list.length) {
     grid.innerHTML = Array.from({ length: 3 }, () => '<div class="p-card card skeleton"></div>').join("");
@@ -159,13 +190,42 @@ async function loadAll({ reset = false } = {}) {
 }
 
 async function refreshStats(list) {
-  const want = list.filter((t) => t.token && t.curve);
+  const want = list.filter((t) => t.token && t.curve && visible(t));
   if (!want.length) return;
   try {
     const stats = await pons().fetchCurveStats(want);
     stats.forEach((v, k) => state.stats.set(k, v));
   } catch {}
+  broadcast();
+  loadSparks(want.slice(0, 24)); // background; re-renders as they arrive
 }
+
+// Sparklines from real trades (launch price → each trade → now)
+async function loadSparks(list) {
+  const queue = [...list];
+  const worker = async () => {
+    while (queue.length) {
+      const t = queue.shift();
+      try {
+        const d = await pons().getTradesCached({ token: t.token, curve: t.curve, decimals: 18 }, { maxAgeMs: 25000 });
+        const st = state.stats.get(t.token);
+        const prices = [st?.launchPrice, ...d.trades.map((x) => x.price), st?.priceEth].filter((x) => x > 0);
+        state.sparks.set(t.token, { prices: prices.slice(-40), count: d.trades.length });
+        render();
+      } catch {}
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  broadcast();
+}
+
+function broadcast() {
+  window.dispatchEvent(new CustomEvent("bler:explore-data", { detail: exploreData() }));
+}
+function exploreData() {
+  return { tokens: state.all.filter(visible), stats: state.stats, sparks: state.sparks };
+}
+window.blerExplore = { data: exploreData };
 
 async function resolvePending() {
   const list = localLaunches();
@@ -218,6 +278,11 @@ function setTab(next) {
 }
 
 document.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.ex)));
+document.querySelectorAll("#exSort [data-sort]").forEach((b) => b.addEventListener("click", () => {
+  sort = b.dataset.sort;
+  document.querySelectorAll("#exSort [data-sort]").forEach((x) => x.classList.toggle("active", x === b));
+  render();
+}));
 
 $("#exMore").addEventListener("click", async () => {
   if (loading) return;

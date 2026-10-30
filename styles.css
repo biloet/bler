@@ -800,9 +800,58 @@ h1, h2, h3 { text-wrap: balance; }
 
 /* UI polish */
 @media (min-width: 640px) {
-  #launches { grid-template-columns: repeat(auto-fit, minmax(300px, 360px)); justify-content: center; }
+  #launches { grid-template-columns: repeat(auto-fit, minmax(300px, 340px)); justify-content: center; }
   .modal-card.trade-card { max-width: 520px; }
   .t-chart-box { height: 180px; }
 }
 #launches .p-card { min-height: 78px; }
 .t-trades-empty { text-align: center; padding: 14px 4px; }
+
+/* Token page (trade panel): one column on mobile, two on desktop */
+.t-body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "info" "trade" "trades"; column-gap: 24px; }
+.t-info { grid-area: info; min-width: 0; }
+.t-trade { grid-area: trade; min-width: 0; }
+.t-trades { grid-area: trades; min-width: 0; }
+.t-share { display: flex; gap: 8px; margin: -4px 0 14px; }
+.t-share .btn { flex: 1; padding: 9px 12px; font-size: 13px; border-radius: 12px; }
+.t-share-x svg { width: 14px; height: 14px; }
+.t-share-x.pulse { animation: sharePulse 1.6s ease-in-out 3; border-color: rgba(255,255,255,.5); }
+@keyframes sharePulse { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.12); } }
+@media (min-width: 980px) {
+  .modal-card.trade-card { max-width: 980px; padding: 26px 28px 30px; }
+  .t-body { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-areas: "info trade" "trades trade"; }
+  .t-trade { position: sticky; top: 0; align-self: start; padding-left: 24px; border-left: 1px solid var(--border); }
+  .t-trades { margin-top: 18px; }
+  .t-chart-box { height: 240px; }
+}
+
+/* ---------- Explore cards v2 ---------- */
+.avatar.round { border-radius: 50%; }
+.x-card { align-items: center; }
+.x-card .avatar { width: 48px; height: 48px; font-size: 19px; box-shadow: 0 0 0 2px rgba(255,255,255,.08); }
+.p-meta { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.x-card .p-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.spark { width: 80px; height: 28px; display: block; }
+.chg { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+.ex-sort { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin: -4px 0 14px; }
+.ex-sort[hidden] { display: none; }
+.chip-btn.active { background: #fff; color: #0b0b0d; border-color: #fff; }
+
+/* ---------- Hero showcase ---------- */
+.live-tag { color: var(--green) !important; border-color: rgba(62,224,143,.35) !important; background: rgba(62,224,143,.08); }
+#hChart { width: 100%; height: 100%; display: block; }
+.h-show .profile-name { min-width: 0; }
+.h-show .profile-name #hName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 12ch; }
+#hAvatar { position: relative; overflow: hidden; color: #fff; }
+#hAvatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.h-show .change { font-size: 12px; }
+.h-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.h-in .h-line { animation: hDraw 1.1s var(--ease-out); }
+.h-in .profile-row, .h-in .stats { animation: hFade .5s var(--ease-out); }
+@keyframes hDraw { from { stroke-dashoffset: 1; } }
+@keyframes hFade { from { opacity: 0; transform: translateY(6px); } }
+.h-dots { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+.h-dot { width: 7px; height: 7px; border-radius: 99px; background: rgba(255,255,255,.2); transition: width .3s, background .3s; }
+.h-dot.active { width: 22px; background: #fff; }
+.float-chip[hidden] { display: none; }
+.chg.flat, .change.flat { color: var(--muted); }

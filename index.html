@@ -82,53 +82,45 @@
       <!-- Browser mockup -->
       <div class="mockup-stage" id="stage">
       <div class="mockup-halo" aria-hidden="true"></div>
-      <div class="float-chip chip-2" aria-hidden="true">🔥 1,284 holders</div>
-      <div class="mockup" id="mockup" role="img" aria-label="Preview of a BLER profile market">
+      <div class="float-chip chip-2" id="hChip" aria-hidden="true" hidden></div>
+      <div class="mockup" id="mockup" aria-label="Live BLER token">
         <div class="mockup-bar">
           <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-          <span class="mockup-url">bler.app/you</span>
+          <span class="mockup-url" id="hUrl">bler · live</span>
         </div>
-        <div class="mockup-body">
+        <div class="mockup-body h-show" id="hShow">
           <div class="profile-row">
-            <div class="avatar avatar-grad">Y</div>
+            <div class="avatar round avatar-grad" id="hAvatar">B</div>
             <div class="profile-meta">
-              <div class="profile-name">You <span class="ticker">$YOU</span> <span class="tag">Preview</span></div>
-              <div class="profile-sub">Market cap</div>
+              <div class="profile-name"><span id="hName">Loading…</span> <span class="ticker" id="hSym"></span> <span class="tag live-tag" id="hTag">LIVE</span></div>
+              <div class="profile-sub" id="hHandle">Latest on BLER</div>
             </div>
             <div class="profile-price">
-              <div class="mcap" id="mcap">$84,219</div>
-              <div class="change up" id="change">+12.4%</div>
+              <div class="mcap" id="hPrice">—</div>
+              <div class="change" id="hChange"></div>
             </div>
           </div>
 
           <div class="chart-wrap">
-            <svg class="chart" id="chart" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
-              <defs>
-                <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#3ee08f" stop-opacity=".35" />
-                  <stop offset="100%" stop-color="#3ee08f" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-              <path id="chartArea" fill="url(#chartFill)" d="" />
-              <path id="chartLine" fill="none" stroke="#3ee08f" stroke-width="2.5" stroke-linejoin="round" d="" />
-            </svg>
+            <svg class="chart" id="hChart" aria-label="Price chart"></svg>
           </div>
 
           <div class="stats">
-            <div class="stat"><span>Holders</span><strong>1,284</strong></div>
-            <div class="stat"><span>24h Vol</span><strong>$12.9K</strong></div>
-            <div class="stat"><span>Curve</span><strong>63%</strong></div>
+            <div class="stat"><span>Market cap</span><strong id="hMcap">—</strong></div>
+            <div class="stat"><span>Trades</span><strong id="hTrades">—</strong></div>
+            <div class="stat"><span>Curve</span><strong id="hCurve">—</strong></div>
           </div>
 
           <div class="curve">
-            <div class="curve-head"><span>Bonding curve progress</span><span>63%</span></div>
-            <div class="curve-bar"><div class="curve-fill" style="width:63%"></div></div>
+            <div class="curve-head"><span>Bonding curve → Uniswap V4</span><span id="hCurve2">—</span></div>
+            <div class="curve-bar"><div class="curve-fill" id="hBar" style="width:0%"></div></div>
           </div>
 
           <div class="trade">
-            <button class="btn btn-buy">Buy</button>
-            <button class="btn btn-sell">Sell</button>
+            <button type="button" class="btn btn-buy" id="hBuy">Buy</button>
+            <button type="button" class="btn btn-sell" id="hSell">Sell</button>
           </div>
+          <div class="h-dots" id="hDots" role="tablist" aria-label="Featured tokens"></div>
         </div>
       </div>
       </div>
@@ -150,6 +142,11 @@
       <div class="tabs" role="tablist">
         <button type="button" class="tab active" data-ex="all" role="tab">🔥 All BLER tokens</button>
         <button type="button" class="tab" data-ex="mine" role="tab">👤 Yours</button>
+      </div>
+      <div class="ex-sort" id="exSort" role="group" aria-label="Sort tokens">
+        <button type="button" class="chip-btn active" data-sort="new">✨ New</button>
+        <button type="button" class="chip-btn" data-sort="mcap">💎 Top MC</button>
+        <button type="button" class="chip-btn" data-sort="active">⚡ Active</button>
       </div>
       <form class="lookup" id="lookupForm">
         <input name="addr" placeholder="Paste a token address (0x…)" autocomplete="off" autocapitalize="off" spellcheck="false" />
@@ -372,11 +369,20 @@
         </div>
         <button class="icon-btn" data-close aria-label="Close">✕</button>
       </div>
+      <div class="t-body">
+      <div class="t-info">
       <button type="button" class="ca-box" id="tCa" aria-label="Copy contract address">
         <span class="ca-label">CA</span>
         <span class="ca-addr" id="tCaAddr">—</span>
         <span class="ca-copy" id="tCaCopy">Copy</span>
       </button>
+      <div class="t-share">
+        <a class="btn btn-dark btn-sm t-share-x" id="tShareX" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Share on X
+        </a>
+        <button type="button" class="btn btn-dark btn-sm" id="tCopyLink">🔗 Copy link</button>
+      </div>
       <div class="t-stats">
         <div class="stat"><span>Price</span><strong id="tPrice">—</strong></div>
         <div class="stat"><span>Market cap</span><strong id="tMcap">—</strong></div>
@@ -396,6 +402,8 @@
         <div class="curve-head"><span>Bonding curve → Uniswap V4</span><span id="tProg">—</span></div>
         <div class="curve-bar"><div class="curve-fill" id="tProgBar" style="width:0%"></div></div>
       </div>
+      </div>
+      <div class="t-trade">
       <div class="seg" role="tablist">
         <button type="button" class="seg-btn active" data-side="buy" role="tab">Buy</button>
         <button type="button" class="seg-btn" data-side="sell" role="tab">Sell</button>
@@ -421,9 +429,11 @@
         <button type="submit" class="btn btn-lg full t-submit buy" id="tBtn">Buy</button>
         <a class="muted small t-link" id="tLink" target="_blank" rel="noopener">View on Blockscout ↗</a>
       </form>
+      </div>
       <div class="t-trades">
         <div class="t-trades-head"><span>Recent trades</span><span class="muted small" id="tTradesCount"></span></div>
         <div id="tTrades"></div>
+      </div>
       </div>
     </div>
   </div>
@@ -434,5 +444,6 @@
   <script type="module" src="pons.js"></script>
   <script type="module" src="trade.js"></script>
   <script type="module" src="explore.js"></script>
+  <script type="module" src="hero.js"></script>
 </body>
 </html>
