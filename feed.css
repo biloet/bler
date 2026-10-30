@@ -50,7 +50,8 @@ body { background: #000; color: var(--text); padding-bottom: 0; font-size: 15px;
 .fhead { position: sticky; top: 0; z-index: 30; background: rgba(0,0,0,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
 .mtop { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 0; }
 .mav { width: 34px; height: 34px; border-radius: 50%; background: var(--bg-2); border: 1px solid var(--border); font-weight: 800; font-size: 13px; display: grid; place-items: center; color: var(--text); }
-.mav.on { background: linear-gradient(135deg, #8c7bff, #5ef0e0); color: #000; border: 0; }
+.mav.on { background: #fff; color: #000; border: 0; }
+.mav.on svg { color: #000; }
 .mlogo img { border-radius: 9px; display: block; }
 .ftitle { font-size: 20px; font-weight: 800; padding: 12px 16px 6px; }
 @media (max-width: 999px) { .fhead.tabs-on .ftitle { display: none; } .ftitle { padding-top: 6px; } }
