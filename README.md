@@ -15,15 +15,14 @@ npx vercel dev
 
 ## Structure
 
-- `index.html` — page markup
-- `styles.css` — styling (dark, cinematic, mobile-first)
-- `script.js` — UI, Explore list, wallet connection (EIP-6963 / EIP-1193)
-- `pons.js` — Pons V2: launch (`launchToken`), market reads, curve buy/sell with quotes + slippage
+- `index.html` — app shell: X-style layout (left nav, feed, right column; mobile tab bar) + wallet/launch/trade modals
+- `feed.css` — social feed design (loaded after `styles.css`, which still styles the modals)
+- `feed.js` — the feed: BLER tokens as posts (stories, For you / New launches / Holding, Trending, Activity, Search, About)
+- `script.js` — modals, launch form, wallet connection (EIP-6963 / EIP-1193)
+- `pons.js` — Pons V2: launch, market reads, trades, balances, curve buy/sell with quotes + slippage
 - `trade.js` — token page: chart, trades, Buy/Sell, Share on X; shareable at `#/t/<token address>`
 - `api/rpc.js` — Vercel serverless JSON-RPC proxy (read-only allowlist, retries 429s)
 - `api/bler.js` — Vercel function indexing BLER launches per 500k-block window (finished windows CDN-cached for a year)
-- `explore.js` — Explore: BLER tokens only (all / yours), market cap, change since launch, sparklines, sort
-- `hero.js` — hero showcase cycling through the most active BLER tokens with their real chart
 - `assets/vendor/viem-2.21.0.js` — bundled [viem](https://viem.sh) 2.21.0 (ESM)
 - `assets/logo.svg` — BLER logo
 

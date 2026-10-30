@@ -454,10 +454,6 @@ $("#tradeForm").addEventListener("submit", async (e) => {
   }
 });
 
-$("#lookupForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  open(new FormData(e.target).get("addr").trim());
-});
 
 $("#tCopyLink").addEventListener("click", async () => {
   if (!market) return;

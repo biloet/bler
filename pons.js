@@ -540,6 +540,18 @@ export async function fetchCurveStats(items) {
   return out;
 }
 
+/** Token balances of `account` for a list of tokens: Map(token -> bigint). */
+export async function fetchBalances(items, account) {
+  const out = new Map();
+  if (!items.length || !account) return out;
+  const res = await readClient().multicall({
+    contracts: items.map((t) => ({ address: t.token, abi: tokenAbi, functionName: "balanceOf", args: [account] })),
+    allowFailure: true,
+  });
+  items.forEach((t, i) => out.set(t.token, res[i].status === "success" ? res[i].result : 0n));
+  return out;
+}
+
 // Shared trade cache (hero, Explore sparklines, trade panel). Refreshes
 // incrementally; entries younger than maxAgeMs are returned as-is.
 const tradeCache = new Map();
@@ -569,5 +581,5 @@ export async function checkLaunchTx(hash) {
   return log ? { status: "live", token: log.args.token, curve: log.args.curve } : { status: "failed" };
 }
 
-window.blerPons = { readStatus, launchToken, fetchTrades, getTradesCached, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
+window.blerPons = { readStatus, launchToken, fetchTrades, getTradesCached, fetchBalances, fetchLatest, fetchByDeployer, fetchCurveStats, ipfsToHttp, checkLaunchTx, getMarket, quoteBuy, quoteSell, buy, sell, applySlippage, LaunchError, EXPLORER, CHAIN_ID };
 window.dispatchEvent(new Event("bler:pons-ready"));
