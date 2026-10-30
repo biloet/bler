@@ -367,6 +367,12 @@ body { background: #000; }
 .w-ico.wm { background: linear-gradient(135deg, var(--c1), var(--c2)) !important; color: #fff; font-weight: 800; font-size: 17px; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 18px -6px var(--c2); }
 .w-ico.wg svg { width: 20px; height: 20px; color: #c9d1d9; }
 .mav svg { width: 18px; height: 18px; color: var(--text); }
+.mav svg.xg { width: 15px; height: 15px; }
+.mtop { position: relative; }
+.mtop .mlogo { position: absolute; left: 50%; transform: translateX(-50%); }
+.mright { display: flex; gap: 8px; }
+.rfoot a { color: inherit; text-decoration: none; }
+.rfoot a:hover { color: var(--text); text-decoration: underline; }
 .me-av svg { width: 20px; height: 20px; color: var(--text); }
 #tCopyLink svg { width: 15px; height: 15px; }
 
