@@ -15,12 +15,12 @@ module.exports = async function handler(req, res) {
     return res.status(302).send("");
   }
   const appUrl = `/#/t/${token}`;
-  let title = "BLER — Your clout. Now a market.";
+  let title = "BLER · Your clout. Now a market.";
   let desc = "Launch your 𝕏 or fomo profile as a token on Robinhood Chain.";
   try {
     const c = await tokenCard(token, { withChart: false });
     const ch = Math.abs(c.change) < 0.0005 ? "" : ` · ${c.change >= 0 ? "+" : ""}${(c.change * 100).toFixed(1)}% since launch`;
-    title = `$${c.symbol} — ${c.name}${c.handle ? ` (@${c.handle})` : ""} on BLER`;
+    title = `$${c.symbol} · ${c.name}${c.handle ? ` (@${c.handle})` : ""} on BLER`;
     desc = `Market cap ${fmt(c.mcapEth)} ETH${ch}. Trade it on Robinhood Chain.`;
   } catch {}
   const image = `${origin}/api/og?t=${token}`;

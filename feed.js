@@ -46,7 +46,7 @@ const ago = (t) => {
   return `${Math.floor(s / 86400)}d`;
 };
 function num(n) {
-  if (n == null || !isFinite(n)) return "—";
+  if (n == null || !isFinite(n)) return "-";
   if (n === 0) return "0";
   if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
   if (n >= 1e3) return (n / 1e3).toFixed(2) + "K";
@@ -208,12 +208,12 @@ function postText(t, st, n) {
   const ageMs = Date.now() - (t.createdAt || 0);
   if (t.status === "pending") return `Launching ${sym} on BLER… confirming on Robinhood Chain ⏳`;
   if (st?.graduated) return `${sym} graduated to Uniswap V4 🎓`;
-  if (st?.progress >= 0.7) return `${sym} is about to graduate — bonding curve ${(st.progress * 100).toFixed(0)}% 🎓`;
-  if (ageMs < 3600e3 && n < 3) return `Just launched my profile on BLER 🚀 ${sym} — come early 👀`;
-  if (n === 0) return `${sym} is live — no trades yet. Be the first 👀`;
-  if ((st?.change ?? 0) > 0.2 && n >= 5) return `${sym} is pumping — ${n} trades so far 🔥`;
-  if ((st?.change ?? 0) < -0.2) return `${sym} is on sale — down ${Math.abs(st.change * 100).toFixed(0)}% since launch 👀`;
-  return `${sym} — ${n} trade${n === 1 ? "" : "s"} so far on BLER`;
+  if (st?.progress >= 0.7) return `${sym} is about to graduate: bonding curve ${(st.progress * 100).toFixed(0)}% 🎓`;
+  if (ageMs < 3600e3 && n < 3) return `Just launched my profile on BLER 🚀 ${sym}, come early 👀`;
+  if (n === 0) return `${sym} is live. No trades yet. Be the first 👀`;
+  if ((st?.change ?? 0) > 0.2 && n >= 5) return `${sym} is pumping with ${n} trades so far 🔥`;
+  if ((st?.change ?? 0) < -0.2) return `${sym} is on sale, down ${Math.abs(st.change * 100).toFixed(0)}% since launch 👀`;
+  return `${sym} has ${n} trade${n === 1 ? "" : "s"} so far on BLER`;
 }
 
 function chartSvg(t, st, i) {
@@ -255,8 +255,8 @@ function post(t, i) {
       ${pending ? "" : `
       <div class="pcard" data-open="${esc(t.token)}">
         <div class="pctop">
-          <div><span class="muted">Market cap</span><b>${st.mcapEth != null ? `${num(st.mcapEth)} ETH` : "—"}</b></div>
-          <div class="r"><span class="muted">Since launch</span><b class="${pctCls(st.change)}">${pct(st.change) || "—"}</b></div>
+          <div><span class="muted">Market cap</span><b>${st.mcapEth != null ? `${num(st.mcapEth)} ETH` : "-"}</b></div>
+          <div class="r"><span class="muted">Since launch</span><b class="${pctCls(st.change)}">${pct(st.change) || "-"}</b></div>
         </div>
         ${chartSvg(t, st, i)}
         <div class="pcbot">
@@ -266,7 +266,7 @@ function post(t, i) {
       </div>
       <div class="pacts">
         <span class="pa" title="Trades">${ICON.trades}<b>${n}</b> trade${n === 1 ? "" : "s"}</span>
-        <span class="pa" title="Bonding curve → Uniswap V4">${ICON.curve}${st.graduated ? "Graduated" : `Curve <b>${st.progress != null ? `${(st.progress * 100).toFixed(1)}%` : "—"}</b>`}</span>
+        <span class="pa" title="Bonding curve → Uniswap V4">${ICON.curve}${st.graduated ? "Graduated" : `Curve <b>${st.progress != null ? `${(st.progress * 100).toFixed(1)}%` : "-"}</b>`}</span>
         ${holdTxt}
         <a href="${esc(share)}" target="_blank" rel="noopener" title="Share on X" class="pa act">${ICON.share}Share</a>
       </div>`}
@@ -299,7 +299,7 @@ const ABOUT = `
   <section class="about">
     <div class="ahero"><img src="assets/logo.svg" alt="" width="56" height="56"><h2>Your clout. Now a market.</h2><p>BLER turns your 𝕏 or fomo profile into a token on Robinhood Chain. Fans buy in on an ETH bonding curve, and you earn ETH on every trade.</p><button type="button" class="btn-launch" data-open-launch>Launch your profile</button></div>
     <h3>How it works</h3>
-    <ol class="steps2"><li><b>Plug in</b> Connect your wallet and sign in with 𝕏 or fomo.</li><li><b>Go live</b> One tap launches your token on an ETH bonding curve. Fair launch — no presale, no insiders.</li><li><b>Get paid</b> Fans buy, the price climbs, creator fees in ETH hit your wallet. When the curve sells out, your token graduates to Uniswap V4.</li></ol>
+    <ol class="steps2"><li><b>Plug in</b> Connect your wallet and sign in with 𝕏 or fomo.</li><li><b>Go live</b> One tap launches your token on an ETH bonding curve. Fair launch, no presale, no insiders.</li><li><b>Get paid</b> Fans buy, the price climbs, creator fees in ETH hit your wallet. When the curve sells out, your token graduates to Uniswap V4.</li></ol>
     <h3>FAQ</h3>
     <details><summary>What is BLER?</summary><p>A launchpad that turns your 𝕏 or fomo profile into a live market on Robinhood Chain.</p></details>
     <details><summary>Is it non-custodial?</summary><p>Yes. You trade from your own wallet. BLER never holds your funds.</p></details>
@@ -313,7 +313,7 @@ function empty(kind) {
     loading: ["", ""],
     error: ["⏳ Robinhood Chain is busy", "Couldn't load tokens just now. Retrying automatically…"],
     none: ["🚀 No BLER tokens yet", "Be the first to launch your profile."],
-    search: ["🔎 No matches", "Try a ticker, a name, an @handle — or paste a token address."],
+    search: ["🔎 No matches", "Try a ticker, a name, an @handle, or paste a token address."],
     connect: ["👛 Connect your wallet", "See the BLER tokens you hold."],
     holding: ["🫙 Nothing here yet", "Buy a BLER token and it shows up here."],
     activity: ["📭 No trades yet", "Buys and sells on BLER tokens show up here."],
@@ -585,7 +585,7 @@ $("#fMore").addEventListener("click", async () => {
   const b = $("#fMore");
   b.disabled = true; b.textContent = "Loading…";
   try { await loadIndex(); await loadStats(state.all); loadTrades(state.all); }
-  catch { ui()?.toast("Couldn't load older tokens — try again"); }
+  catch { ui()?.toast("Couldn't load older tokens. Try again"); }
   b.disabled = false; b.textContent = "Load older";
   render();
 });

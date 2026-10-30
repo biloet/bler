@@ -136,6 +136,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     res.setHeader("cache-control", "no-store");
-    return res.status(503).json({ error: "Robinhood Chain RPC is busy — try again in a moment" });
+    return res.status(503).json({ error: "Robinhood Chain RPC is busy. Try again in a moment" });
   }
 };

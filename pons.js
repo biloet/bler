@@ -80,14 +80,14 @@ const tokenAbi = parseAbi([
 ]);
 
 const FRIENDLY = {
-  NotWhitelisted: "This wallet isn't allowed to launch yet — launching is currently gated.",
+  NotWhitelisted: "This wallet isn't allowed to launch yet. Launching is currently gated.",
   LaunchFeeNotPaid: "The launch fee wasn't paid in full. Try again.",
   CreatorTaxTooHigh: "Creator fee is above the allowed limit. Pick a lower fee.",
   LaunchEconomicsMismatch: "Curve settings changed a moment ago. Try again.",
   LaunchConfigDisabled: "This launch type is paused right now.",
   PairTokenNotApproved: "ETH pairing isn't enabled right now.",
   SlippageExceeded: "Price moved more than your slippage. Try again or raise slippage.",
-  CurveGraduated: "This token has graduated to Uniswap V4 — it no longer trades on the curve.",
+  CurveGraduated: "This token has graduated to Uniswap V4 and no longer trades on the curve.",
   ZeroAmount: "Enter an amount greater than zero.",
 };
 
@@ -174,7 +174,7 @@ export async function launchToken({ provider, account, name, symbol, handle, pla
       name,
       symbol,
       logo: isX ? `https://unavatar.io/x/${handle}` : "",
-      description: `@${handle} on ${isX ? "X" : "fomo"} — launched on BLER`,
+      description: `@${handle} on ${isX ? "X" : "fomo"} · launched on BLER`,
       socials: {
         twitter: isX ? `https://x.com/${handle}` : "",
         telegram: "",
@@ -342,7 +342,7 @@ export async function sell({ provider, account, market: m, tokensIn, slippageBps
     const { publicClient, walletClient } = clients(provider);
     const allowance = await publicClient.readContract({ address: m.token, abi: tokenAbi, functionName: "allowance", args: [account, m.curve] });
     if (allowance < tokensIn) {
-      onStep(`Step 1/2 — approve ${m.symbol} for selling in your wallet…`);
+      onStep(`Step 1/2: approve ${m.symbol} for selling in your wallet…`);
       const approveHash = await walletClient.writeContract({
         account, chain, address: m.token, abi: tokenAbi, functionName: "approve", args: [m.curve, tokensIn],
       });
@@ -356,7 +356,7 @@ export async function sell({ provider, account, market: m, tokensIn, slippageBps
     const { request, result } = await publicClient.simulateContract({
       account, address: m.curve, abi: curveAbi, functionName: "sell", args: [tokensIn, minOut, account],
     });
-    onStep(allowance < tokensIn ? "Step 2/2 — confirm the sell in your wallet…" : "Confirm the sell in your wallet…");
+    onStep(allowance < tokensIn ? "Step 2/2: confirm the sell in your wallet…" : "Confirm the sell in your wallet…");
     const hash = await walletClient.writeContract(request);
     onStep("Waiting for Robinhood Chain…");
     const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 1000, timeout: 120_000 });

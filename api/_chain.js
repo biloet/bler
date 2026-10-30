@@ -97,7 +97,7 @@ async function tokenCard(token, { withChart = true } = {}) {
 }
 
 function fmt(n) {
-  if (!isFinite(n) || n == null) return "—";
+  if (!isFinite(n) || n == null) return "-";
   if (n === 0) return "0";
   if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
   if (n >= 1e3) return (n / 1e3).toFixed(2) + "K";

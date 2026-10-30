@@ -12,7 +12,7 @@ let refreshTimer = null;
 let busy = false;
 
 function fmtNum(n, max = 4) {
-  if (!isFinite(n)) return "—";
+  if (!isFinite(n)) return "-";
   if (n === 0) return "0";
   if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
   if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
@@ -74,14 +74,14 @@ function renderMarket() {
   }
   $("#tPrice").textContent = fmtNum(m.priceEth) + " ETH";
   $("#tMcap").textContent = fmtNum(m.mcapEth, 2) + " ETH";
-  $("#tHold").textContent = readWallet().account ? fmtNum(Number(formatUnits(m.balance, m.decimals))) : "—";
+  $("#tHold").textContent = readWallet().account ? fmtNum(Number(formatUnits(m.balance, m.decimals))) : "-";
   const pct = (m.progress * 100).toFixed(1);
   $("#tProg").textContent = m.tradable ? `${pct}%` : "Graduated";
   $("#tProgBar").style.width = `${m.tradable ? pct : 100}%`;
   $("#tLink").href = `${pons().EXPLORER}/token/${m.token}`;
 
   const blocked = !m.tradable
-    ? "This token graduated to Uniswap V4 — it no longer trades on the curve."
+    ? "This token graduated to Uniswap V4 and no longer trades on the curve."
     : !m.native
       ? "This token is paired with an ERC-20, not ETH. BLER trades ETH pairs only for now."
       : "";
@@ -147,8 +147,8 @@ function renderQuote() {
   const feePct = (Number(m.feeBps) + Number(m.creatorTaxBps)) / 100;
   $("#tFees").textContent = `${feePct}% (${Number(m.feeBps) / 100}% curve + ${Number(m.creatorTaxBps) / 100}% creator)`;
   if (amt === 0n) {
-    $("#tOut").textContent = "—";
-    $("#tMin").textContent = "—";
+    $("#tOut").textContent = "-";
+    $("#tMin").textContent = "-";
     return;
   }
   if (side === "buy") {
@@ -211,7 +211,7 @@ async function loadTrades() {
   } catch (err) {
     if (!tradeData || tradeData.token !== m.token) {
       $("#tChartMsg").hidden = false;
-      $("#tChartMsg").textContent = "Couldn't load trades — retrying…";
+      $("#tChartMsg").textContent = "Couldn't load trades. Retrying…";
     }
   } finally {
     tradesBusy = false;
@@ -263,7 +263,7 @@ function renderChart() {
     <line id="tCross" x1="0" x2="0" y1="0" y2="${H}" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 3" visibility="hidden"/>
     <circle id="tCrossDot" r="4.5" fill="#fff" visibility="hidden"/>`;
   msg.hidden = tradeData.trades.length > 0;
-  msg.textContent = "No trades yet — be the first";
+  msg.textContent = "No trades yet. Be the first";
   svg._pts = pts;
   svg._xy = xy;
   showTip(null);
@@ -346,12 +346,12 @@ function setShare(m) {
 }
 
 async function open(addr, { side: startSide = "buy", justLaunched = false } = {}) {
-  if (!pons()) return ui().toast("Still loading — try again in a second");
+  if (!pons()) return ui().toast("Still loading. Try again in a second");
   if (!isAddress(addr)) return ui().toast("That doesn't look like a token address");
   const token = getAddress(addr);
   clearInterval(refreshTimer); // stop refreshing the previous token
   market = null;
-  ["#tPrice", "#tMcap", "#tHold", "#tProg", "#tOut", "#tMin", "#tFees"].forEach((s) => ($(s).textContent = "—"));
+  ["#tPrice", "#tMcap", "#tHold", "#tProg", "#tOut", "#tMin", "#tFees"].forEach((s) => ($(s).textContent = "-"));
   $("#tradeTitle").textContent = "Loading…";
   $("#tSub").textContent = "";
   $("#tCaAddr").textContent = token;
@@ -413,7 +413,7 @@ $("#tCa").addEventListener("click", async () => {
   const label = $("#tCaCopy");
   label.textContent = ok ? "Copied ✓" : "Copy failed";
   label.classList.toggle("done", ok);
-  ui().toast(ok ? "Contract address copied" : "Couldn't copy — long-press the address to copy it");
+  ui().toast(ok ? "Contract address copied" : "Couldn't copy. Long-press the address to copy it");
   clearTimeout(label._t);
   label._t = setTimeout(() => { label.textContent = "Copy"; label.classList.remove("done"); }, 2000);
 });
@@ -469,7 +469,7 @@ $("#tradeForm").addEventListener("submit", async (e) => {
 $("#tCopyLink").addEventListener("click", async () => {
   if (!market) return;
   const ok = await copyText(tokenUrl(market.token));
-  ui().toast(ok ? "Link copied — paste it anywhere" : "Couldn't copy the link");
+  ui().toast(ok ? "Link copied. Paste it anywhere" : "Couldn't copy the link");
 });
 
 // Closing the panel clears the token link from the URL

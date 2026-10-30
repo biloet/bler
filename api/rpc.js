@@ -49,5 +49,5 @@ module.exports = async function handler(req, res) {
     }
     if (attempt < RETRY_DELAYS.length) await sleep(RETRY_DELAYS[attempt]);
   }
-  return rpcError(res, 503, Array.isArray(body) ? null : body.id, "Robinhood Chain RPC is busy — try again in a moment");
+  return rpcError(res, 503, Array.isArray(body) ? null : body.id, "Robinhood Chain RPC is busy. Try again in a moment");
 };

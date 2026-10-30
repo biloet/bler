@@ -89,7 +89,7 @@
       toast("Connect your wallet first, then launch");
       return;
     }
-    if (!window.blerPons) return toast("Still loading — try again in a second");
+    if (!window.blerPons) return toast("Still loading. Try again in a second");
 
     const data = new FormData(e.target);
     const handle = String(data.get("handle")).trim().replace(/^@+/, "").replace(/[^A-Za-z0-9_.]/g, "").slice(0, 30);
@@ -191,12 +191,12 @@
   }
 
   async function refreshBalance() {
-    if (!state.address || state.chainId !== CHAIN_ID) return ($("#acctBal").textContent = "—");
+    if (!state.address || state.chainId !== CHAIN_ID) return ($("#acctBal").textContent = "-");
     try {
       const bal = await state.provider.request({ method: "eth_getBalance", params: [state.address, "latest"] });
       $("#acctBal").textContent = formatEth(bal);
     } catch {
-      $("#acctBal").textContent = "—";
+      $("#acctBal").textContent = "-";
     }
   }
 
@@ -280,7 +280,7 @@
         try {
           await ensureChain();
         } catch {
-          toast("Connected — switch to Robinhood Chain to continue");
+          toast("Connected. Switch to Robinhood Chain to continue");
           return;
         }
       }
